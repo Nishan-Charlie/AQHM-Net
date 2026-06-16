@@ -349,6 +349,13 @@ class ClassicalBackbone(nn.Module):
         self.stage3 = UIBBlock(48, 96, expansion=6, stride=2, use_extra_dw=True)
         self.se3 = SEBlock(96, ratio=0.25)
 
+        # --- Resolution-adaptive pooling ------------------------------------
+        # Forces the stage-3 feature map to a fixed 7×7 grid for ANY input
+        # resolution (28, 64, 128, 224, ...), so the 49-superpixel / SSA /
+        # quantum design is unchanged. At 28×28 stage3 already yields 7×7, so
+        # this is a no-op there (backward compatible).
+        self.feat_pool = nn.AdaptiveAvgPool2d((7, 7))
+
         # --- Superpixel projection + attention ------------------------------
         self.projector = SuperpixelProjector(96, 48, 9)
         self.ssa = SpatialSuperpixelAttention(n_patches=49, hidden=12)
@@ -373,8 +380,12 @@ class ClassicalBackbone(nn.Module):
         x = self.stage2(x)     # (B, 48, 14, 14)
         x = self.cbam(x)       # spatial + channel attention
 
-        x = self.stage3(x)     # (B, 96,  7,  7)
+        x = self.stage3(x)     # (B, 96, H', W')  (7×7 @28px, 56×56 @224px)
         x = self.se3(x)        # channel attention
+
+        # Resolution-adaptive: collapse any feature-map size to a 7×7 grid so the
+        # downstream 49-superpixel / SSA / quantum stack is input-size agnostic.
+        x = self.feat_pool(x)  # (B, 96, 7, 7)
 
         # Save global classical context for CQ fusion (before reshaping)
         z_c = x.mean(dim=[2, 3])   # (B, 96) — global average pool

@@ -139,6 +139,9 @@ def parse_args() -> argparse.Namespace:
                         help="Attention-conditioned trainable quantum encoding "
                              "(SSA weights pool patches + learned angle map) in "
                              "place of fixed arctan(mean). Tags output dir _attenc.")
+    parser.add_argument("--img_size", type=int, default=28,
+                        help="MedMNIST native resolution {28,64,128,224}. The "
+                             "resolution-adaptive backbone pools to 7x7. Tags _rN.")
 
     return parser.parse_args()
 
@@ -223,6 +226,8 @@ def main() -> None:
         dataset_tag += f"_k{args.n_quantum_heads}"
     if args.attention_encoding:
         dataset_tag += "_attenc"
+    if args.img_size != 28:
+        dataset_tag += f"_r{args.img_size}"
 
     dirs = make_output_dirs(args.output_dir, dataset_tag)
     print(f"[output] Results -> {dirs['root']}")
@@ -246,6 +251,7 @@ def main() -> None:
         fashion_classes=args.fashion_classes,
         seed=args.base_seed,
         use_balanced_sampler=args.use_balanced_sampler,
+        img_size=args.img_size,
     )
 
     cfg = DATASET_CONFIG[args.dataset.lower()]

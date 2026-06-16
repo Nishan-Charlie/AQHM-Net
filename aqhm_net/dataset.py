@@ -506,6 +506,7 @@ def get_dataloaders(
     fashion_classes: list[int] | None = None,
     seed: int = 42,
     use_balanced_sampler: bool = False,
+    img_size: int = 28,
 ) -> dict[str, DataLoader]:
     """Build train/val/test DataLoaders for the requested dataset.
 
@@ -544,7 +545,8 @@ def get_dataloaders(
         _DataClass = getattr(medmnist, INFO[cfg["medmnist_key"]]["python_class"])
         _stat_tfm = transforms.Compose(list(pre_ops) + [transforms.ToTensor()])
         _stat_ds = _DataClass(
-            split="train", transform=_stat_tfm, download=True, root=data_root
+            split="train", transform=_stat_tfm, download=True, root=data_root,
+            size=img_size,
         )
         mean, std = compute_normalisation_stats(
             _stat_ds, cfg["channels"], max_samples=10_000, seed=seed
@@ -697,15 +699,19 @@ def get_dataloaders(
     medkey = cfg["medmnist_key"]
     DataClass = getattr(medmnist, INFO[medkey]["python_class"])
 
-    # MedMNIST images are 28×28 by default — matches our target resolution
+    # MedMNIST supports native sizes {28, 64, 128, 224}; the resolution-adaptive
+    # backbone pools any size to the 7×7 superpixel grid.
     train_ds = DataClass(
-        split="train", transform=train_tfm, download=True, root=data_root
+        split="train", transform=train_tfm, download=True, root=data_root,
+        size=img_size,
     )
     val_ds = DataClass(
-        split="val",   transform=eval_tfm,  download=True, root=data_root
+        split="val",   transform=eval_tfm,  download=True, root=data_root,
+        size=img_size,
     )
     test_ds = DataClass(
-        split="test",  transform=eval_tfm,  download=True, root=data_root
+        split="test",  transform=eval_tfm,  download=True, root=data_root,
+        size=img_size,
     )
 
     if use_balanced_sampler:
