@@ -1,0 +1,9 @@
+dataset,K,source,n_seeds,weighted_f1_mean,macro_f1_mean,weighted_accuracy_mean,mean_auc_mean
+MNIST-10,4,parallel_50ep,1,0.9922,0.9921,0.9922,0.9998
+MNIST-4,1,baseline_10seed,10,0.9973,0.9973,0.9973,0.9999
+PathMNIST,1,baseline_10seed,10,0.8115,0.7794,0.8138,0.9749
+DermaMNIST,4,parallel_50ep,1,0.6977,0.4499,0.6803,0.9065
+PneumoniaMNIST,1,baseline_10seed,10,0.8799,0.8687,0.884,0.9604
+BreastMNIST,1,baseline_10seed,10,0.8138,0.7652,0.8128,0.8268
+CIFAR-10,8,cifar_Ksweep_300ep,1,0.8392,0.8392,0.8382,0.9839
+CIFAR-100,8,cifar_Ksweep_300ep,1,0.5057,0.5057,0.5179,0.9674

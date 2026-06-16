@@ -1,0 +1,27 @@
+# AQHM-Net Dependencies
+# Install in a fresh virtual environment:
+#   python -m venv .venv
+#   .venv\Scripts\activate         (Windows)
+#   pip install -r requirements.txt
+
+# ── Core deep learning ──────────────────────────────────────────────────────
+torch>=2.2.0
+torchvision>=0.17.0
+
+# ── Quantum computing ───────────────────────────────────────────────────────
+# PennyLane with the C++ lightning backend (strongly recommended for 11 qubits)
+# Section 14.6 / 19: lightning.qubit is significantly faster than default.qubit
+pennylane>=0.45.0
+pennylane-lightning>=0.45.0    # C++ accelerated simulator
+
+# ── Data ────────────────────────────────────────────────────────────────────
+medmnist>=3.0.0                # MedMNIST benchmark datasets
+
+# ── Metrics / statistics ────────────────────────────────────────────────────
+scikit-learn>=1.4.0            # F1, AUC-ROC, confusion matrix
+scipy>=1.12.0                  # Wilcoxon signed-rank test
+
+# ── Utilities ───────────────────────────────────────────────────────────────
+numpy>=1.26.0
+tqdm>=4.66.0                   # optional progress bars
+matplotlib>=3.8.0              # optional plotting (confusion matrix, history)

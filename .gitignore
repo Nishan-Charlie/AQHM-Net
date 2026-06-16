@@ -1,0 +1,51 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+.claude/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# ---- Datasets (large, downloadable) ----
+data/
+*.npz
+*.tar.gz
+*.zip
+
+# ---- Model checkpoints / weights (large binaries, regenerable) ----
+*.pt
+*.pth
+*.ckpt
+*.onnx
+**/checkpoints/
+
+
+# ---- Run logs / stdout dumps ----
+*.log
+*_output.txt
+*_output.txt.err
+*.err
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+*.pdf
+
+learnings/
+logs/
