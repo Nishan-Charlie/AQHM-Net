@@ -49,7 +49,7 @@ import numpy as np
 import torch
 
 from aqhm_net.dataset import get_dataloaders, DATASET_CONFIG, compute_class_weights
-from aqhm_net.model import AQHMNet
+from aqhm_net.model import AQHMNet, ResNet18Baseline
 from aqhm_net.train import train_model
 from aqhm_net.evaluate import evaluate_model, aggregate_runs, print_results_table
 from aqhm_net.plotting import save_all_plots, plot_dataset_comparison
@@ -96,11 +96,16 @@ def parse_args() -> argparse.Namespace:
                         help="Enable NT-Xent contrastive alignment (for RGB datasets).")
     parser.add_argument("--contrastive_weight", type=float, default=0.15)
 
-    # ── Ablation ─────────────────────────────────────────────────────────────
+    # ── Ablation / Baseline ───────────────────────────────────────────────────
     parser.add_argument(
         "--ablation", type=str, default=None,
-        choices=["no_uib", "z_basis"],
+        choices=["no_uib", "z_basis", "no_quantum"],
         help="Which ablation variant to run (None = full model).",
+    )
+    parser.add_argument(
+        "--model", type=str, default="aqhm_net",
+        choices=["aqhm_net", "resnet18"],
+        help="Model architecture to use (default: aqhm_net).",
     )
 
     # ── Output ───────────────────────────────────────────────────────────────
@@ -180,11 +185,16 @@ def build_model(
     args: argparse.Namespace,
     in_channels: int,
     num_classes: int,
-) -> AQHMNet:
+) -> AQHMNet | ResNet18Baseline:
+    if args.model == "resnet18":
+        return ResNet18Baseline(in_channels=in_channels, num_classes=num_classes)
+
     if args.ablation == "no_uib":
         return AQHMNet.ablation_no_uib(in_channels, num_classes)
     elif args.ablation == "z_basis":
         return AQHMNet.ablation_z_basis(in_channels, num_classes)
+    elif args.ablation == "no_quantum":
+        return AQHMNet.ablation_no_quantum(in_channels, num_classes, scale=args.scale)
     else:
         return AQHMNet(
             in_channels=in_channels,
@@ -229,6 +239,8 @@ def main() -> None:
     # ── Output directories ───────────────────────────────────────────────────
     # Append ablation tag so ablation results never overwrite full-model results
     dataset_tag = args.dataset
+    if args.model != "aqhm_net":
+        dataset_tag += f"_{args.model}"
     if args.ablation:
         dataset_tag += f"_{args.ablation}"
     if args.mnist_classes and args.dataset == "mnist":
@@ -395,7 +407,7 @@ def main() -> None:
               f"mAUC={metrics['mean_auc']:.4f}")
 
     # ── Print aggregated results ─────────────────────────────────────────────
-    model_name = f"AQHM-Net{'-' + args.ablation if args.ablation else ''}"
+    model_name = f"{args.model.upper()}{'-' + args.ablation if args.ablation else ''}"
     print_results_table(per_run_metrics, dataset_tag, model_name)
 
     # ── Aggregate summary ────────────────────────────────────────────────────

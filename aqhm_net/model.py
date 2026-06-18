@@ -30,6 +30,7 @@ import torch.nn.functional as F
 from .classical_backbone import ClassicalBackbone
 from .quantum_circuit import QuantumLayer, N_QUBITS, N_LAYERS
 from .fusion import ClassicalQuantumFusion, ClassificationHead
+import torchvision.models as models
 
 
 # ---------------------------------------------------------------------------
@@ -159,6 +160,7 @@ class AQHMNet(nn.Module):
         self.n_quantum_heads = n_quantum_heads
         self.attention_encoding = attention_encoding
         self.scale = scale
+        self.ablate_quantum = False
 
         # ── Sub-modules ────────────────────────────────────────────────────
         self.backbone = ClassicalBackbone(
@@ -205,6 +207,14 @@ class AQHMNet(nn.Module):
         """
         # 1. Classical backbone: rich feature extraction + attention
         superpixels, z_c, attn_w = self.backbone(x)   # (B,49,9), (B,96), (B,49)
+
+        if self.ablate_quantum:
+            # Ablation: Bypass quantum circuit entirely
+            h_fused = self.fusion.c_proj(z_c)
+            logits = self.head(h_fused)
+            if self.use_contrastive:
+                return logits, torch.tensor(0.0, device=x.device)
+            return logits
 
         # 2. Quantum layer: encode + convolve + re-upload + measure
         z_q = self.quantum(superpixels, z_c, attn_w)   # (B, 9*K)
@@ -270,3 +280,41 @@ class AQHMNet(nn.Module):
             stacklevel=2,
         )
         return cls(in_channels=in_channels, num_classes=num_classes)
+
+    @classmethod
+    def ablation_no_quantum(cls, in_channels: int, num_classes: int, scale: str = "small") -> "AQHMNet":
+        """Ablation: Bypass the Quantum Layer entirely.
+        
+        Tests: Classical-only baseline using the exact same backbone and classification head.
+        """
+        import warnings
+        warnings.warn(
+            "ABLATION: No Quantum Circuit. Bypassing quantum layer.",
+            stacklevel=2,
+        )
+        model = cls(in_channels=in_channels, num_classes=num_classes, scale=scale)
+        model.ablate_quantum = True
+        return model
+
+# ---------------------------------------------------------------------------
+# ResNet-18 Baseline
+# ---------------------------------------------------------------------------
+
+class ResNet18Baseline(nn.Module):
+    """ResNet-18 baseline adapted for arbitrary input channels and classes."""
+    def __init__(self, in_channels: int, num_classes: int):
+        super().__init__()
+        self.resnet = models.resnet18(weights=None)
+        
+        # Adapt first conv layer if input is not 3 channels
+        if in_channels != 3:
+            self.resnet.conv1 = nn.Conv2d(
+                in_channels, 64, kernel_size=7, stride=2, padding=3, bias=False
+            )
+            
+        # Adapt final fully connected layer
+        self.resnet.fc = nn.Linear(self.resnet.fc.in_features, num_classes)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+        logits = self.resnet(x)
+        return logits
