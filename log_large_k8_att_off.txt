@@ -1,0 +1,91 @@
+
+================================================================
+  AQHM-Net Experiment Runner
+  Dataset  : cifar100
+  Ablation : None (full model)
+  Device   : cuda:0
+  Epochs   : 200   Runs: 1
+================================================================
+
+[output] Results -> ./results_cifar100_k8/cifar100_k8
+  Classes : 100  |  Channels: 3
+
+
+------------------------------------------------------------
+  RUN 1/1  (seed=0)
+------------------------------------------------------------
+[seed_000] Epoch 001/200 | Train Loss: 4.5930  Acc: 0.0164 | Val Loss: 4.5391  Acc: 0.0240 | LR(G1): 0.000280 | 61.6s
+[seed_000] Epoch 002/200 | Train Loss: 4.3772  Acc: 0.0406 | Val Loss: 4.1581  Acc: 0.0640 | LR(G1): 0.000460 | 60.2s
+[seed_000] Epoch 003/200 | Train Loss: 4.1576  Acc: 0.0642 | Val Loss: 3.9912  Acc: 0.0944 | LR(G1): 0.000640 | 58.8s
+[seed_000] Epoch 004/200 | Train Loss: 4.0394  Acc: 0.0804 | Val Loss: 3.8543  Acc: 0.1182 | LR(G1): 0.000820 | 58.7s
+[seed_000] Epoch 005/200 | Train Loss: 3.9505  Acc: 0.0962 | Val Loss: 3.7496  Acc: 0.1444 | LR(G1): 0.001000 | 57.6s
+[seed_000] Epoch 006/200 | Train Loss: 3.8636  Acc: 0.1147 | Val Loss: 3.6836  Acc: 0.1538 | LR(G1): 0.001000 | 59.7s
+[seed_000] Epoch 007/200 | Train Loss: 3.7779  Acc: 0.1378 | Val Loss: 3.5550  Acc: 0.1836 | LR(G1): 0.001000 | 58.6s
+[seed_000] Epoch 008/200 | Train Loss: 3.7108  Acc: 0.1533 | Val Loss: 3.4915  Acc: 0.2010 | LR(G1): 0.000999 | 57.0s
+[seed_000] Epoch 009/200 | Train Loss: 3.6582  Acc: 0.1635 | Val Loss: 3.4155  Acc: 0.2254 | LR(G1): 0.000999 | 58.0s
+[seed_000] Epoch 010/200 | Train Loss: 3.6073  Acc: 0.1752 | Val Loss: 3.3856  Acc: 0.2348 | LR(G1): 0.000998 | 56.0s
+[seed_000] Epoch 011/200 | Train Loss: 3.5660  Acc: 0.1838 | Val Loss: 3.2967  Acc: 0.2544 | LR(G1): 0.000998 | 56.7s
+[seed_000] Epoch 012/200 | Train Loss: 3.5251  Acc: 0.1934 | Val Loss: 3.3096  Acc: 0.2396 | LR(G1): 0.000997 | 56.5s
+[seed_000] Epoch 013/200 | Train Loss: 3.4937  Acc: 0.2036 | Val Loss: 3.2438  Acc: 0.2620 | LR(G1): 0.000996 | 56.9s
+[seed_000] Epoch 014/200 | Train Loss: 3.4586  Acc: 0.2116 | Val Loss: 3.2039  Acc: 0.2772 | LR(G1): 0.000995 | 57.8s
+[seed_000] Epoch 015/200 | Train Loss: 3.4331  Acc: 0.2184 | Val Loss: 3.1552  Acc: 0.2832 | LR(G1): 0.000994 | 59.6s
+[seed_000] Epoch 016/200 | Train Loss: 3.3981  Acc: 0.2290 | Val Loss: 3.1241  Acc: 0.2908 | LR(G1): 0.000992 | 58.5s
+[seed_000] Epoch 017/200 | Train Loss: 3.3756  Acc: 0.2324 | Val Loss: 3.1032  Acc: 0.2988 | LR(G1): 0.000991 | 53.9s
+[seed_000] Epoch 018/200 | Train Loss: 3.3492  Acc: 0.2416 | Val Loss: 3.0914  Acc: 0.3034 | LR(G1): 0.000989 | 53.7s
+[seed_000] Epoch 019/200 | Train Loss: 3.3262  Acc: 0.2468 | Val Loss: 3.0492  Acc: 0.3130 | LR(G1): 0.000987 | 53.7s
+[seed_000] Epoch 020/200 | Train Loss: 3.3119  Acc: 0.2488 | Val Loss: 3.0326  Acc: 0.3092 | LR(G1): 0.000985 | 53.4s
+[seed_000] Epoch 021/200 | Train Loss: 3.2918  Acc: 0.2549 | Val Loss: 3.0282  Acc: 0.3246 | LR(G1): 0.000983 | 53.5s
+[seed_000] Epoch 022/200 | Train Loss: 3.2742  Acc: 0.2646 | Val Loss: 2.9690  Acc: 0.3402 | LR(G1): 0.000981 | 54.8s
+[seed_000] Epoch 023/200 | Train Loss: 3.2589  Acc: 0.2664 | Val Loss: 2.9800  Acc: 0.3392 | LR(G1): 0.000979 | 54.3s
+[seed_000] Epoch 024/200 | Train Loss: 3.2391  Acc: 0.2711 | Val Loss: 2.9514  Acc: 0.3454 | LR(G1): 0.000977 | 54.3s
+[seed_000] Epoch 025/200 | Train Loss: 3.2235  Acc: 0.2754 | Val Loss: 2.9730  Acc: 0.3354 | LR(G1): 0.000974 | 54.0s
+[seed_000] Epoch 026/200 | Train Loss: 3.2163  Acc: 0.2778 | Val Loss: 2.9231  Acc: 0.3554 | LR(G1): 0.000972 | 54.3s
+[seed_000] Epoch 027/200 | Train Loss: 3.1939  Acc: 0.2847 | Val Loss: 2.9339  Acc: 0.3526 | LR(G1): 0.000969 | 54.3s
+[seed_000] Epoch 028/200 | Train Loss: 3.1750  Acc: 0.2884 | Val Loss: 2.9072  Acc: 0.3530 | LR(G1): 0.000966 | 53.9s
+[seed_000] Epoch 029/200 | Train Loss: 3.1663  Acc: 0.2907 | Val Loss: 2.9031  Acc: 0.3550 | LR(G1): 0.000963 | 53.7s
+[seed_000] Epoch 030/200 | Train Loss: 3.1586  Acc: 0.2930 | Val Loss: 2.8571  Acc: 0.3646 | LR(G1): 0.000960 | 54.3s
+[seed_000] Epoch 031/200 | Train Loss: 3.1429  Acc: 0.2982 | Val Loss: 2.8704  Acc: 0.3586 | LR(G1): 0.000957 | 53.8s
+[seed_000] Epoch 032/200 | Train Loss: 3.1364  Acc: 0.3024 | Val Loss: 2.8258  Acc: 0.3816 | LR(G1): 0.000953 | 54.2s
+[seed_000] Epoch 033/200 | Train Loss: 3.1155  Acc: 0.3099 | Val Loss: 2.8321  Acc: 0.3772 | LR(G1): 0.000950 | 54.3s
+[seed_000] Epoch 034/200 | Train Loss: 3.1112  Acc: 0.3063 | Val Loss: 2.8386  Acc: 0.3810 | LR(G1): 0.000946 | 54.8s
+[seed_000] Epoch 035/200 | Train Loss: 3.0957  Acc: 0.3119 | Val Loss: 2.8307  Acc: 0.3774 | LR(G1): 0.000943 | 54.7s
+[seed_000] Epoch 036/200 | Train Loss: 3.0905  Acc: 0.3152 | Val Loss: 2.8186  Acc: 0.3894 | LR(G1): 0.000939 | 54.7s
+[seed_000] Epoch 037/200 | Train Loss: 3.0774  Acc: 0.3192 | Val Loss: 2.7873  Acc: 0.3924 | LR(G1): 0.000935 | 53.7s
+[seed_000] Epoch 038/200 | Train Loss: 3.0664  Acc: 0.3230 | Val Loss: 2.7870  Acc: 0.3874 | LR(G1): 0.000931 | 53.7s
+[seed_000] Epoch 039/200 | Train Loss: 3.0550  Acc: 0.3249 | Val Loss: 2.7879  Acc: 0.3936 | LR(G1): 0.000927 | 53.8s
+[seed_000] Epoch 040/200 | Train Loss: 3.0467  Acc: 0.3287 | Val Loss: 2.7821  Acc: 0.3878 | LR(G1): 0.000923 | 54.5s
+[seed_000] Epoch 041/200 | Train Loss: 3.0385  Acc: 0.3293 | Val Loss: 2.7609  Acc: 0.3964 | LR(G1): 0.000918 | 54.2s
+[seed_000] Epoch 042/200 | Train Loss: 3.0252  Acc: 0.3310 | Val Loss: 2.8107  Acc: 0.3876 | LR(G1): 0.000914 | 53.7s
+[seed_000] Epoch 043/200 | Train Loss: 3.0175  Acc: 0.3346 | Val Loss: 2.7533  Acc: 0.3958 | LR(G1): 0.000909 | 54.3s
+[seed_000] Epoch 044/200 | Train Loss: 3.0215  Acc: 0.3370 | Val Loss: 2.7758  Acc: 0.3906 | LR(G1): 0.000905 | 54.2s
+[seed_000] Epoch 045/200 | Train Loss: 3.0055  Acc: 0.3406 | Val Loss: 2.7674  Acc: 0.4088 | LR(G1): 0.000900 | 54.8s
+[seed_000] Epoch 046/200 | Train Loss: 2.9948  Acc: 0.3433 | Val Loss: 2.7430  Acc: 0.4084 | LR(G1): 0.000895 | 54.7s
+[seed_000] Epoch 047/200 | Train Loss: 2.9914  Acc: 0.3453 | Val Loss: 2.7087  Acc: 0.4116 | LR(G1): 0.000890 | 54.2s
+[seed_000] Epoch 048/200 | Train Loss: 2.9788  Acc: 0.3480 | Val Loss: 2.7029  Acc: 0.4214 | LR(G1): 0.000885 | 54.0s
+[seed_000] Epoch 049/200 | Train Loss: 2.9743  Acc: 0.3527 | Val Loss: 2.7263  Acc: 0.4062 | LR(G1): 0.000880 | 52.8s
+[seed_000] Epoch 050/200 | Train Loss: 2.9685  Acc: 0.3533 | Val Loss: 2.7097  Acc: 0.4152 | LR(G1): 0.000874 | 50.6s
+[seed_000] Epoch 051/200 | Train Loss: 2.9562  Acc: 0.3557 | Val Loss: 2.7716  Acc: 0.3976 | LR(G1): 0.000869 | 50.7s
+[seed_000] Epoch 052/200 | Train Loss: 2.9535  Acc: 0.3524 | Val Loss: 2.6843  Acc: 0.4170 | LR(G1): 0.000864 | 51.1s
+[seed_000] Epoch 053/200 | Train Loss: 2.9458  Acc: 0.3585 | Val Loss: 2.7086  Acc: 0.4118 | LR(G1): 0.000858 | 51.5s
+[seed_000] Epoch 054/200 | Train Loss: 2.9384  Acc: 0.3598 | Val Loss: 2.6803  Acc: 0.4200 | LR(G1): 0.000852 | 52.5s
+[seed_000] Epoch 055/200 | Train Loss: 2.9311  Acc: 0.3604 | Val Loss: 2.6899  Acc: 0.4244 | LR(G1): 0.000847 | 67.6s
+[seed_000] Epoch 056/200 | Train Loss: 2.9236  Acc: 0.3667 | Val Loss: 2.7231  Acc: 0.4102 | LR(G1): 0.000841 | 57.2s
+[seed_000] Epoch 057/200 | Train Loss: 2.9241  Acc: 0.3642 | Val Loss: 2.6697  Acc: 0.4320 | LR(G1): 0.000835 | 50.6s
+[seed_000] Epoch 058/200 | Train Loss: 2.9169  Acc: 0.3696 | Val Loss: 2.6683  Acc: 0.4268 | LR(G1): 0.000829 | 51.2s
+[seed_000] Epoch 059/200 | Train Loss: 2.9129  Acc: 0.3694 | Val Loss: 2.6952  Acc: 0.4186 | LR(G1): 0.000823 | 50.6s
+[seed_000] Epoch 060/200 | Train Loss: 2.9119  Acc: 0.3715 | Val Loss: 2.6585  Acc: 0.4278 | LR(G1): 0.000816 | 51.4s
+[seed_000] Epoch 061/200 | Train Loss: 2.9006  Acc: 0.3741 | Val Loss: 2.6921  Acc: 0.4210 | LR(G1): 0.000810 | 52.0s
+[seed_000] Epoch 062/200 | Train Loss: 2.8905  Acc: 0.3750 | Val Loss: 2.6830  Acc: 0.4192 | LR(G1): 0.000804 | 59.6s
+[seed_000] Epoch 063/200 | Train Loss: 2.8864  Acc: 0.3791 | Val Loss: 2.6810  Acc: 0.4216 | LR(G1): 0.000797 | 66.9s
+[seed_000] Epoch 064/200 | Train Loss: 2.8840  Acc: 0.3807 | Val Loss: 2.6650  Acc: 0.4310 | LR(G1): 0.000791 | 50.2s
+[seed_000] Epoch 065/200 | Train Loss: 2.8769  Acc: 0.3778 | Val Loss: 2.6832  Acc: 0.4302 | LR(G1): 0.000784 | 51.1s
+[seed_000] Epoch 066/200 | Train Loss: 2.8726  Acc: 0.3799 | Val Loss: 2.6247  Acc: 0.4426 | LR(G1): 0.000778 | 53.4s
+[seed_000] Epoch 067/200 | Train Loss: 2.8645  Acc: 0.3854 | Val Loss: 2.6101  Acc: 0.4430 | LR(G1): 0.000771 | 55.1s
+[seed_000] Epoch 068/200 | Train Loss: 2.8679  Acc: 0.3811 | Val Loss: 2.6456  Acc: 0.4374 | LR(G1): 0.000764 | 57.5s
+[seed_000] Epoch 069/200 | Train Loss: 2.8589  Acc: 0.3866 | Val Loss: 2.6267  Acc: 0.4366 | LR(G1): 0.000757 | 58.6s
+[seed_000] Epoch 070/200 | Train Loss: 2.8452  Acc: 0.3864 | Val Loss: 2.6370  Acc: 0.4404 | LR(G1): 0.000750 | 54.4s
+[seed_000] Epoch 071/200 | Train Loss: 2.8480  Acc: 0.3907 | Val Loss: 2.5858  Acc: 0.4480 | LR(G1): 0.000743 | 59.7s
+[seed_000] Epoch 072/200 | Train Loss: 2.8381  Acc: 0.3949 | Val Loss: 2.6054  Acc: 0.4388 | LR(G1): 0.000736 | 52.0s
+[seed_000] Epoch 073/200 | Train Loss: 2.8452  Acc: 0.3884 | Val Loss: 2.5865  Acc: 0.4512 | LR(G1): 0.000729 | 64.1s
+[seed_000] Epoch 074/200 | Train Loss: 2.8311  Acc: 0.3958 | Val Loss: 2.5937  Acc: 0.4462 | LR(G1): 0.000722 | 65.2s
+[seed_000] Epoch 075/200 | Train Loss: 2.8245  Acc: 0.3985 | Val Loss: 2.6067  Acc: 0.4462 | LR(G1): 0.000715 | 60.2s

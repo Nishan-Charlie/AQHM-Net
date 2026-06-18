@@ -222,6 +222,9 @@ def run_all(args) -> None:
                 "--resume",             # skip already-completed seeds on restart
             ] + exp["cmd_extra"]
 
+            if args.device:
+                cmd.extend(["--device", args.device])
+
             log(f"  cmd: {' '.join(cmd[2:])}", logfile)  # skip python + script path
 
             try:
@@ -311,6 +314,8 @@ if __name__ == "__main__":
     parser.add_argument("--n_runs",     type=int, default=None)
     parser.add_argument("--n_epochs",   type=int, default=None)
     parser.add_argument("--batch_size", type=int, default=128)
+    parser.add_argument("--device",     type=str, default=None,
+                        help="Specific device to use (e.g., 'cuda:0', 'cuda:1', 'cpu').")
 
     args = parser.parse_args()
 

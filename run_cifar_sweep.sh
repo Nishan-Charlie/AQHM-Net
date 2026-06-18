@@ -6,7 +6,14 @@
 
 PY="C:/Users/nisha/miniconda3/envs/pmqnet/python.exe"
 OUT="./results_cifar_sweep"
-COMMON="--n_runs 1 --n_epochs 300 --patience 20 --output_dir $OUT"
+
+DEVICE=""
+if [ "$1" = "--device" ]; then
+  DEVICE="--device $2"
+  shift 2
+fi
+
+COMMON="--n_runs 1 --n_epochs 300 --patience 20 --output_dir $OUT $DEVICE"
 
 run () {  # $1 = label, rest = args
   label="$1"; shift

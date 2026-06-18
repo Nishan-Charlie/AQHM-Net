@@ -116,6 +116,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--resume", action="store_true",
                         help="Skip seeds that already have a completed history file "
                              "and evaluate ALL completed seeds at the end.")
+    parser.add_argument("--device", type=str, default=None,
+                        help="Specific device to use (e.g., 'cuda:0', 'cuda:1', 'cpu'). "
+                             "If not specified, auto-selects cuda if available, else cpu.")
 
     # ── Loss / sampling improvements for imbalanced medical datasets ─────────
     parser.add_argument("--use_focal_loss", action="store_true",
@@ -211,7 +214,10 @@ def main() -> None:
     else:
         debug_batches = None
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if args.device:
+        device = torch.device(args.device)
+    else:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"\n{'='*64}")
     print(f"  AQHM-Net Experiment Runner")
     print(f"  Dataset  : {args.dataset}")

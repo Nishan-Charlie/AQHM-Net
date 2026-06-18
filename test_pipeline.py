@@ -47,7 +47,10 @@ from aqhm_net import AQHMNet
 print("   ok", flush=True)
 
 print("7. Forward pass through full model (batch=2, MNIST)...", flush=True)
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+if len(sys.argv) > 1 and sys.argv[1].startswith("cuda"):
+    device = torch.device(sys.argv[1])
+else:
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = AQHMNet(in_channels=1, num_classes=10).to(device)
 imgs  = torch.randn(2, 1, 28, 28).to(device)
 with torch.no_grad():

@@ -13,6 +13,7 @@ the 5 best checkpoints land in <config>/checkpoints/. Per-seed metrics in
 
 from __future__ import annotations
 
+import argparse
 import os
 import subprocess
 import time
@@ -44,6 +45,11 @@ def ts() -> str:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--device", type=str, default=None,
+                        help="Specific device to use (e.g., 'cuda:0', 'cuda:1', 'cpu').")
+    args = parser.parse_args()
+
     os.makedirs(OUT, exist_ok=True)
     pending = list(JOBS)
     running: dict = {}
@@ -56,8 +62,12 @@ def main() -> None:
         while pending and len(running) < POOL:
             tag, extra = pending.pop(0)
             lf = open(os.path.join(OUT, f"{tag}.log"), "w")
-            p = subprocess.Popen([PY, "run_experiment.py"] + extra + COMMON,
-                                 stdout=lf, stderr=subprocess.STDOUT)
+            
+            cmd = [PY, "run_experiment.py"] + extra + COMMON
+            if args.device:
+                cmd.extend(["--device", args.device])
+                
+            p = subprocess.Popen(cmd, stdout=lf, stderr=subprocess.STDOUT)
             running[p] = (tag, time.time(), lf)
             print(f"[{ts()}] START  {tag}", flush=True)
 

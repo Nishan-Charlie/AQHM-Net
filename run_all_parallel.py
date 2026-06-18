@@ -16,6 +16,7 @@ Each job logs to results_300ep/<tag>.log. One failure does not abort the rest.
 
 from __future__ import annotations
 
+import argparse
 import os
 import subprocess
 import time
@@ -51,6 +52,11 @@ def ts() -> str:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--device", type=str, default=None,
+                        help="Specific device to use (e.g., 'cuda:0', 'cuda:1', 'cpu').")
+    args = parser.parse_args()
+
     os.makedirs(OUT, exist_ok=True)
     pending = list(JOBS)
     running: dict = {}   # proc -> (tag, start_time, logfile)
@@ -64,8 +70,13 @@ def main() -> None:
         while pending and len(running) < POOL:
             tag, extra = pending.pop(0)
             lf = open(os.path.join(OUT, f"{tag}.log"), "w")
+            
+            cmd = [PY, "run_experiment.py"] + extra + COMMON
+            if args.device:
+                cmd.extend(["--device", args.device])
+                
             p = subprocess.Popen(
-                [PY, "run_experiment.py"] + extra + COMMON,
+                cmd,
                 stdout=lf, stderr=subprocess.STDOUT,
             )
             running[p] = (tag, time.time(), lf)
