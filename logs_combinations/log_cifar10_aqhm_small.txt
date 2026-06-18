@@ -1,0 +1,21 @@
+
+================================================================
+  AQHM-Net Experiment Runner
+  Dataset  : cifar10
+  Ablation : None (full model)
+  Device   : cuda:0
+  Epochs   : 200   Runs: 1
+================================================================
+
+[output] Results -> ./results_combinations/cifar10
+  Classes : 10  |  Channels: 3
+
+
+------------------------------------------------------------
+  RUN 1/1  (seed=0)
+------------------------------------------------------------
+[seed_000] Epoch 001/200 | Train Loss: 2.1787  Acc: 0.1822 | Val Loss: 1.9852  Acc: 0.2288 | LR(G1): 0.000280 | 36.4s
+[seed_000] Epoch 002/200 | Train Loss: 1.9258  Acc: 0.2884 | Val Loss: 1.7990  Acc: 0.3748 | LR(G1): 0.000460 | 29.3s
+[seed_000] Epoch 003/200 | Train Loss: 1.7925  Acc: 0.3850 | Val Loss: 1.6580  Acc: 0.4464 | LR(G1): 0.000640 | 26.7s
+[seed_000] Epoch 004/200 | Train Loss: 1.6895  Acc: 0.4501 | Val Loss: 1.5499  Acc: 0.5066 | LR(G1): 0.000820 | 29.7s
+[seed_000] Epoch 005/200 | Train Loss: 1.6109  Acc: 0.4946 | Val Loss: 1.4619  Acc: 0.5570 | LR(G1): 0.001000 | 29.5s
