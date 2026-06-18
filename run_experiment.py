@@ -142,6 +142,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--img_size", type=int, default=28,
                         help="MedMNIST native resolution {28,64,128,224}. The "
                              "resolution-adaptive backbone pools to 7x7. Tags _rN.")
+    parser.add_argument("--scale", type=str, default="small",
+                        choices=["small", "medium", "large"],
+                        help="Model-size preset: scales backbone width/depth and "
+                             "fusion dim. 'small'=base model. Tags output dir.")
 
     return parser.parse_args()
 
@@ -186,6 +190,7 @@ def build_model(
             contrastive_weight=args.contrastive_weight,
             n_quantum_heads=args.n_quantum_heads,
             attention_encoding=args.attention_encoding,
+            scale=args.scale,
         )
 
 
@@ -228,6 +233,8 @@ def main() -> None:
         dataset_tag += "_attenc"
     if args.img_size != 28:
         dataset_tag += f"_r{args.img_size}"
+    if args.scale != "small":
+        dataset_tag += f"_{args.scale}"
 
     dirs = make_output_dirs(args.output_dir, dataset_tag)
     print(f"[output] Results -> {dirs['root']}")

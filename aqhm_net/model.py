@@ -33,6 +33,18 @@ from .fusion import ClassicalQuantumFusion, ClassificationHead
 
 
 # ---------------------------------------------------------------------------
+# Model-size presets (scale the CLASSICAL capacity + fusion width). The quantum
+# channel width (n_quantum_heads, K) and attention_encoding are kept orthogonal
+# so model size and the quantum ablation axes stay independent.
+# ---------------------------------------------------------------------------
+SCALE_CONFIGS: dict[str, dict] = {
+    "small":  {"width_mult": 1.0, "depth": 1, "fusion_dim": 64},   # = base model
+    "medium": {"width_mult": 1.5, "depth": 1, "fusion_dim": 128},
+    "large":  {"width_mult": 2.0, "depth": 2, "fusion_dim": 256},
+}
+
+
+# ---------------------------------------------------------------------------
 # NT-Xent contrastive loss (InfoNCE variant)
 # ---------------------------------------------------------------------------
 
@@ -122,6 +134,10 @@ class AQHMNet(nn.Module):
                            attention-conditioned TRAINABLE feature map (the SSA
                            weights pool the patches and a learned linear maps to
                            encoding angles). Default False = original behaviour.
+        scale            : model-size preset 'small' | 'medium' | 'large'
+                           (scales backbone width/depth and fusion dim). 'small'
+                           reproduces the base model. K and attention_encoding
+                           stay independent of the size preset.
     """
 
     def __init__(
@@ -132,17 +148,27 @@ class AQHMNet(nn.Module):
         contrastive_weight: float = 0.15,
         n_quantum_heads: int = 1,
         attention_encoding: bool = False,
+        scale: str = "small",
     ) -> None:
         super().__init__()
+        if scale not in SCALE_CONFIGS:
+            raise ValueError(f"scale must be one of {list(SCALE_CONFIGS)}, got '{scale}'")
+        cfg = SCALE_CONFIGS[scale]
         self.use_contrastive = use_contrastive
         self.contrastive_weight = contrastive_weight
         self.n_quantum_heads = n_quantum_heads
         self.attention_encoding = attention_encoding
+        self.scale = scale
 
         # ── Sub-modules ────────────────────────────────────────────────────
-        self.backbone = ClassicalBackbone(in_channels=in_channels)
+        self.backbone = ClassicalBackbone(
+            in_channels=in_channels,
+            width_mult=cfg["width_mult"],
+            depth=cfg["depth"],
+        )
+        backbone_dim = self.backbone.out_channels   # scaled (96 / 144 / 192)
         self.quantum  = QuantumLayer(
-            classical_dim=96,
+            classical_dim=backbone_dim,
             n_qubits=N_QUBITS,
             n_layers=N_LAYERS,
             n_heads=n_quantum_heads,
@@ -150,11 +176,11 @@ class AQHMNet(nn.Module):
         )
         self.fusion   = ClassicalQuantumFusion(
             quantum_dim=self.quantum.output_dim,   # 9 * n_quantum_heads
-            classical_dim=96,
-            fused_dim=64,
+            classical_dim=backbone_dim,
+            fused_dim=cfg["fusion_dim"],
         )
         self.head     = ClassificationHead(
-            fused_dim=64,
+            fused_dim=cfg["fusion_dim"],
             num_classes=num_classes,
             dropout=0.40,
         )

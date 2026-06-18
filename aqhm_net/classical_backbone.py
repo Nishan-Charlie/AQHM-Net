@@ -20,6 +20,16 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+def _make_divisible(v: float, divisor: int = 8) -> int:
+    """Round a (width-scaled) channel count to the nearest multiple of `divisor`,
+    never dropping below ~90% of the requested value. Standard MobileNet practice
+    that keeps channel counts hardware-friendly under a width multiplier."""
+    new_v = max(divisor, int(v + divisor / 2) // divisor * divisor)
+    if new_v < 0.9 * v:
+        new_v += divisor
+    return int(new_v)
+
+
 # ---------------------------------------------------------------------------
 # Squeeze-and-Excitation (SE) Channel Attention
 # ---------------------------------------------------------------------------
@@ -320,34 +330,50 @@ class ClassicalBackbone(nn.Module):
 
     Args:
         in_channels: number of image channels (1 for grey, 3 for RGB).
+        width_mult : channel width multiplier (1.0 = base; >1 scales all
+                     backbone channels). Used by the small/medium/large presets.
+        depth      : number of UIB blocks per stage (1 = base; >1 stacks extra
+                     residual same-dimension blocks for more depth/capacity).
     """
 
-    def __init__(self, in_channels: int = 1) -> None:
+    def __init__(
+        self,
+        in_channels: int = 1,
+        width_mult: float = 1.0,
+        depth: int = 1,
+    ) -> None:
         super().__init__()
+
+        def ch(c: int) -> int:
+            return _make_divisible(c * width_mult)
+
+        c_stem, c1, c2, c3 = ch(16), ch(24), ch(48), ch(96)
+        self.out_channels = c3   # consumed by the projector / quantum / fusion
 
         # --- Stem -----------------------------------------------------------
         self.stem = nn.Sequential(
-            nn.Conv2d(in_channels, 16, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(16),
+            nn.Conv2d(in_channels, c_stem, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(c_stem),
             nn.ReLU6(inplace=True),
         )
 
-        # --- Stage 1: UIB + SE (channel attention after stage 1) -----------
-        # stride=1 -> preserves 28×28 spatial size
-        # use_extra_dw=False (early stage — smaller receptive field sufficient)
-        self.stage1 = UIBBlock(16, 24, expansion=4, stride=1, use_extra_dw=False)
-        self.se1 = SEBlock(24, ratio=0.25)
+        # --- Stage 1: UIB(+depth) + SE -------------------------------------
+        self.stage1 = self._make_stage(c_stem, c1, expansion=4, stride=1,
+                                       extra_dw=False, n=depth)
+        self.se1 = SEBlock(c1, ratio=0.25)
 
-        # --- Stage 2: UIB + CBAM (spatial+channel at mid resolution) -------
-        # stride=2 -> 28×28 -> 14×14
-        # use_extra_dw=True (UIB-specific: wider receptive field)
-        self.stage2 = UIBBlock(24, 48, expansion=6, stride=2, use_extra_dw=True)
-        self.cbam = CBAMBlock(48, ratio=0.25, dropout=0.10)
+        # --- Stage 2: UIB(+depth) + CBAM (mid resolution) ------------------
+        self.stage2 = self._make_stage(c1, c2, expansion=6, stride=2,
+                                       extra_dw=True, n=depth)
+        self.cbam = CBAMBlock(c2, ratio=0.25, dropout=0.10)
 
-        # --- Stage 3: UIB + SE (channel attention again at low resolution) --
-        # stride=2 -> 14×14 -> 7×7
-        self.stage3 = UIBBlock(48, 96, expansion=6, stride=2, use_extra_dw=True)
-        self.se3 = SEBlock(96, ratio=0.25)
+        # --- Stage 3: UIB(+depth) + SE -------------------------------------
+        self.stage3 = self._make_stage(c2, c3, expansion=6, stride=2,
+                                       extra_dw=True, n=depth)
+        self.se3 = SEBlock(c3, ratio=0.25)
+
+        # Superpixel projector / SSA hidden also scale modestly with width.
+        self._proj_mid = ch(48)
 
         # --- Resolution-adaptive pooling ------------------------------------
         # Forces the stage-3 feature map to a fixed 7×7 grid for ANY input
@@ -357,8 +383,19 @@ class ClassicalBackbone(nn.Module):
         self.feat_pool = nn.AdaptiveAvgPool2d((7, 7))
 
         # --- Superpixel projection + attention ------------------------------
-        self.projector = SuperpixelProjector(96, 48, 9)
+        # Projector input = scaled backbone output channels (self.out_channels).
+        self.projector = SuperpixelProjector(self.out_channels, self._proj_mid, 9)
         self.ssa = SpatialSuperpixelAttention(n_patches=49, hidden=12)
+
+    @staticmethod
+    def _make_stage(in_c: int, out_c: int, expansion: int, stride: int,
+                    extra_dw: bool, n: int) -> nn.Sequential:
+        """A stage = one shape-changing UIB block followed by (n-1) residual
+        same-dimension UIB blocks (depth multiplier)."""
+        blocks = [UIBBlock(in_c, out_c, expansion, stride, extra_dw)]
+        for _ in range(max(0, n - 1)):
+            blocks.append(UIBBlock(out_c, out_c, expansion, 1, extra_dw))
+        return nn.Sequential(*blocks)
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Run the backbone.
