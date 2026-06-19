@@ -11,11 +11,43 @@
   Classes : 10  |  Channels: 3
 
 
+  [resume] seed 0 already done (70 ep) — loading history
+
 ------------------------------------------------------------
-  RUN 1/1  (seed=0)
+  Evaluating all seeds on test split ...
 ------------------------------------------------------------
-[seed_000] Epoch 001/200 | Train Loss: 2.1787  Acc: 0.1822 | Val Loss: 1.9852  Acc: 0.2288 | LR(G1): 0.000280 | 36.4s
-[seed_000] Epoch 002/200 | Train Loss: 1.9258  Acc: 0.2884 | Val Loss: 1.7990  Acc: 0.3748 | LR(G1): 0.000460 | 29.3s
-[seed_000] Epoch 003/200 | Train Loss: 1.7925  Acc: 0.3850 | Val Loss: 1.6580  Acc: 0.4464 | LR(G1): 0.000640 | 26.7s
-[seed_000] Epoch 004/200 | Train Loss: 1.6895  Acc: 0.4501 | Val Loss: 1.5499  Acc: 0.5066 | LR(G1): 0.000820 | 29.7s
-[seed_000] Epoch 005/200 | Train Loss: 1.6109  Acc: 0.4946 | Val Loss: 1.4619  Acc: 0.5570 | LR(G1): 0.001000 | 29.5s
+  seed 000  W-F1=0.8118  W-Acc=0.8110  mAUC=0.9783
+
+------------------------------------------------------------
+AQHM_NET  |  cifar10  |  1 runs
+------------------------------------------------------------
+/home/e21283/miniconda3/envs/quantum/lib/python3.12/site-packages/numpy/_core/_methods.py:223: RuntimeWarning: Degrees of freedom <= 0 for slice
+  ret = _var(a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+/home/e21283/miniconda3/envs/quantum/lib/python3.12/site-packages/numpy/_core/_methods.py:215: RuntimeWarning: invalid value encountered in scalar divide
+  ret = ret.dtype.type(ret / rcount)
+  W-F1    : 0.8118 ± nan  [0.8118 – 0.8118]
+  M-F1    : 0.8118 ± nan  [0.8118 – 0.8118]
+  W-Acc   : 0.8110 ± nan  [0.8110 – 0.8110]
+  mAUC    : 0.9783 ± nan  [0.9783 – 0.9783]
+------------------------------------------------------------
+
+
+[output] Summary saved -> ./results_combinations/cifar10/summary.json
+
+[plots] Generating -> ./results_combinations/cifar10/plots
+  [plot] -> ./results_combinations/cifar10/plots/training_curves.png
+  [plot] -> ./results_combinations/cifar10/plots/confusion_matrix.png
+  [plot] -> ./results_combinations/cifar10/plots/per_class_auc.png
+  [plot] -> ./results_combinations/cifar10/plots/metrics_boxplot.png
+  [plot] -> ./results_combinations/cifar10/plots/loss_vs_seed.png
+[plots] Done  -> ./results_combinations/cifar10/plots
+
+[plots] Updating cross-dataset comparison (11 datasets)...
+  [plot] -> ./results_combinations/all_datasets_comparison.png
+
+================================================================
+  Experiment complete!
+  Results : ./results_combinations/cifar10
+  Plots   : ./results_combinations/cifar10/plots
+================================================================
+

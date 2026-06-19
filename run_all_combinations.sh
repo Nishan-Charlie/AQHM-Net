@@ -32,24 +32,24 @@ for DATASET in "${DATASETS[@]}"; do
     # We can run Small on cuda:0, Medium on cuda:1, wait, then Large on cuda:0
     
     echo "[$DATASET] Running AQHM-Net (K=1, Attention OFF) - Small & Medium"
-    "$PY" run_experiment.py --dataset "$DATASET" --n_epochs $EPOCHS --n_runs $RUNS \
+    "$PY" run_experiment.py --resume --dataset "$DATASET" --n_epochs $EPOCHS --n_runs $RUNS \
         --n_quantum_heads 1 --scale small --output_dir ./results_combinations --device cuda:0 \
         > "logs_combinations/log_${DATASET}_aqhm_small.txt" 2>&1 &
         
-    "$PY" run_experiment.py --dataset "$DATASET" --n_epochs $EPOCHS --n_runs $RUNS \
+    "$PY" run_experiment.py --resume --dataset "$DATASET" --n_epochs $EPOCHS --n_runs $RUNS \
         --n_quantum_heads 1 --scale medium --output_dir ./results_combinations --device cuda:1 \
         > "logs_combinations/log_${DATASET}_aqhm_medium.txt" 2>&1 &
         
     wait
 
     echo "[$DATASET] Running AQHM-Net (K=1, Attention OFF) - Large"
-    "$PY" run_experiment.py --dataset "$DATASET" --n_epochs $EPOCHS --n_runs $RUNS \
+    "$PY" run_experiment.py --resume --dataset "$DATASET" --n_epochs $EPOCHS --n_runs $RUNS \
         --n_quantum_heads 1 --scale large --output_dir ./results_combinations --device cuda:0 \
         > "logs_combinations/log_${DATASET}_aqhm_large.txt" 2>&1 &
         
     # We pair the Large AQHM-Net with the Small No-Quantum Ablation
     echo "[$DATASET] Running No-Quantum Ablation - Small"
-    "$PY" run_experiment.py --dataset "$DATASET" --n_epochs $EPOCHS --n_runs $RUNS \
+    "$PY" run_experiment.py --resume --dataset "$DATASET" --n_epochs $EPOCHS --n_runs $RUNS \
         --ablation no_quantum --scale small --output_dir ./results_combinations --device cuda:1 \
         > "logs_combinations/log_${DATASET}_noquant_small.txt" 2>&1 &
         
@@ -57,11 +57,11 @@ for DATASET in "${DATASETS[@]}"; do
 
     # 2. No-Quantum Ablation (Medium, Large)
     echo "[$DATASET] Running No-Quantum Ablation - Medium & Large"
-    "$PY" run_experiment.py --dataset "$DATASET" --n_epochs $EPOCHS --n_runs $RUNS \
+    "$PY" run_experiment.py --resume --dataset "$DATASET" --n_epochs $EPOCHS --n_runs $RUNS \
         --ablation no_quantum --scale medium --output_dir ./results_combinations --device cuda:0 \
         > "logs_combinations/log_${DATASET}_noquant_medium.txt" 2>&1 &
         
-    "$PY" run_experiment.py --dataset "$DATASET" --n_epochs $EPOCHS --n_runs $RUNS \
+    "$PY" run_experiment.py --resume --dataset "$DATASET" --n_epochs $EPOCHS --n_runs $RUNS \
         --ablation no_quantum --scale large --output_dir ./results_combinations --device cuda:1 \
         > "logs_combinations/log_${DATASET}_noquant_large.txt" 2>&1 &
         
@@ -69,7 +69,7 @@ for DATASET in "${DATASETS[@]}"; do
 
     # 3. ResNet-18 Baseline
     echo "[$DATASET] Running ResNet-18 Baseline"
-    "$PY" run_experiment.py --dataset "$DATASET" --n_epochs $EPOCHS --n_runs $RUNS \
+    "$PY" run_experiment.py --resume --dataset "$DATASET" --n_epochs $EPOCHS --n_runs $RUNS \
         --model resnet18 --output_dir ./results_combinations --device cuda:0 \
         > "logs_combinations/log_${DATASET}_resnet18.txt" 2>&1 &
         

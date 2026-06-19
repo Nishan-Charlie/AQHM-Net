@@ -39,6 +39,7 @@ import torchvision.models as models
 # so model size and the quantum ablation axes stay independent.
 # ---------------------------------------------------------------------------
 SCALE_CONFIGS: dict[str, dict] = {
+    "micro":  {"width_mult": 0.5, "depth": 1, "fusion_dim": 32},
     "small":  {"width_mult": 1.0, "depth": 1, "fusion_dim": 64},   # = base model
     "medium": {"width_mult": 1.5, "depth": 1, "fusion_dim": 128},
     "large":  {"width_mult": 2.0, "depth": 2, "fusion_dim": 256},

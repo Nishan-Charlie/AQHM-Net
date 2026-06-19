@@ -130,7 +130,7 @@ def _build_optimizer(model: AQHMNet) -> Adam:
     return Adam([
         {"params": group1, "lr": 1e-3,  "weight_decay": 1e-4},   # classical
         {"params": group2, "lr": 5e-4,  "weight_decay": 1e-4},   # bridge
-        {"params": group3, "lr": 1e-4,  "weight_decay": 0.0},    # VQC
+        {"params": group3, "lr": 5e-4,  "weight_decay": 0.0},    # VQC (boosted)
     ])
 
 

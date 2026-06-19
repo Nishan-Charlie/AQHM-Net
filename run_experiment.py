@@ -90,7 +90,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--n_runs",     type=int,   default=10,
                         help="Number of independent runs (different seeds).")
     parser.add_argument("--base_seed",  type=int,   default=0)
-    parser.add_argument("--patience",   type=int,   default=10,
+    parser.add_argument("--patience",   type=int,   default=50,
                         help="Early stopping patience in epochs.")
     parser.add_argument("--contrastive", action="store_true",
                         help="Enable NT-Xent contrastive alignment (for RGB datasets).")
@@ -107,6 +107,7 @@ def parse_args() -> argparse.Namespace:
         choices=["aqhm_net", "resnet18"],
         help="Model architecture to use (default: aqhm_net).",
     )
+
 
     # ── Output ───────────────────────────────────────────────────────────────
     parser.add_argument(
@@ -151,9 +152,9 @@ def parse_args() -> argparse.Namespace:
                         help="MedMNIST native resolution {28,64,128,224}. The "
                              "resolution-adaptive backbone pools to 7x7. Tags _rN.")
     parser.add_argument("--scale", type=str, default="small",
-                        choices=["small", "medium", "large"],
+                        choices=["micro", "small", "medium", "large"],
                         help="Model-size preset: scales backbone width/depth and "
-                             "fusion dim. 'small'=base model. Tags output dir.")
+                             "fusion capacity (default 'small' matches base model). Tags output dir.")
 
     return parser.parse_args()
 
