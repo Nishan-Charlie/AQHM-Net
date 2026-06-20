@@ -108,6 +108,25 @@ def parse_args() -> argparse.Namespace:
         help="Model architecture to use (default: aqhm_net).",
     )
 
+    # ── Advanced Preprocessing / Schedulers ──────────────────────────────────
+    parser.add_argument(
+        "--scheduler", type=str, default="cosine",
+        choices=["cosine", "onecycle", "cosine_restarts"],
+        help="Learning rate scheduler to use.",
+    )
+    parser.add_argument(
+        "--cutmix_alpha", type=float, default=0.0,
+        help="Alpha parameter for CutMix (0.0 to disable).",
+    )
+    parser.add_argument(
+        "--mixup_alpha", type=float, default=0.0,
+        help="Alpha parameter for MixUp (0.0 to disable).",
+    )
+    parser.add_argument(
+        "--mixup_prob", type=float, default=0.5,
+        help="Probability of applying CutMix/MixUp on a batch.",
+    )
+
 
     # ── Output ───────────────────────────────────────────────────────────────
     parser.add_argument(
@@ -254,6 +273,12 @@ def main() -> None:
         dataset_tag += f"_r{args.img_size}"
     if args.scale != "small":
         dataset_tag += f"_{args.scale}"
+    if args.scheduler != "cosine":
+        dataset_tag += f"_{args.scheduler}"
+    if args.cutmix_alpha > 0.0:
+        dataset_tag += f"_cutmix{args.cutmix_alpha}"
+    if args.mixup_alpha > 0.0:
+        dataset_tag += f"_mixup{args.mixup_alpha}"
 
     dirs = make_output_dirs(args.output_dir, dataset_tag)
     print(f"[output] Results -> {dirs['root']}")
@@ -358,6 +383,10 @@ def main() -> None:
             warmup_epochs=5,
             use_focal=args.use_focal_loss,
             focal_gamma=args.focal_gamma,
+            scheduler_type=args.scheduler,
+            cutmix_alpha=args.cutmix_alpha,
+            mixup_alpha=args.mixup_alpha,
+            mixup_prob=args.mixup_prob,
         )
 
         # Move the history JSON into histories/

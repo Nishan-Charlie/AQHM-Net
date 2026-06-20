@@ -47,7 +47,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import Adam
-from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
+from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR, OneCycleLR, CosineAnnealingWarmRestarts
 from torch.utils.data import DataLoader
 
 from .model import AQHMNet
@@ -195,12 +195,17 @@ class EarlyStopping:
 def _train_epoch(
     model: AQHMNet,
     loader: DataLoader,
-    criterion: nn.CrossEntropyLoss,
+    criterion: nn.Module,
     optimizer: Adam,
     device: torch.device,
     grad_clip: float = 1.0,
     contrastive_weight: float = 0.0,
     max_batches: Optional[int] = None,   # None = full epoch
+    step_scheduler: Optional[Any] = None,
+    cutmix_alpha: float = 0.0,
+    mixup_alpha: float = 0.0,
+    mixup_prob: float = 0.5,
+    num_classes: Optional[int] = None,
 ) -> tuple[float, float]:
     """Run one training epoch.
 
@@ -208,6 +213,11 @@ def _train_epoch(
         grad_clip          : max gradient norm (1.0 per Section 14.3).
         contrastive_weight : λ for NT-Xent term (0 for greyscale, 0.15 for RGB).
         max_batches        : if set, stop after this many batches (for debug mode).
+        step_scheduler     : step-based learning rate scheduler (e.g. OneCycleLR).
+        cutmix_alpha       : CutMix alpha parameter.
+        mixup_alpha        : MixUp alpha parameter.
+        mixup_prob         : probability of applying CutMix/MixUp on a batch.
+        num_classes        : number of output classes.
 
     Returns:
         (avg_loss, avg_accuracy) over processed batches.
@@ -217,12 +227,34 @@ def _train_epoch(
     correct = 0
     total = 0
 
+    # Initialize CutMix and MixUp transforms if active
+    cutmix_or_mixup = None
+    if (cutmix_alpha > 0.0 or mixup_alpha > 0.0) and num_classes is not None:
+        from torchvision.transforms import v2
+        transforms_list = []
+        if cutmix_alpha > 0.0:
+            transforms_list.append(v2.CutMix(num_classes=num_classes, alpha=cutmix_alpha))
+        if mixup_alpha > 0.0:
+            transforms_list.append(v2.MixUp(num_classes=num_classes, alpha=mixup_alpha))
+        
+        if len(transforms_list) == 1:
+            cutmix_or_mixup = transforms_list[0]
+        else:
+            cutmix_or_mixup = v2.RandomChoice(transforms_list)
+
     for batch_idx, (imgs, labels) in enumerate(loader):
         if max_batches is not None and batch_idx >= max_batches:
             break   # debug: stop early
 
         imgs   = imgs.to(device)
         labels = labels.to(device).squeeze().long()   # MedMNIST wraps in extra dim
+        if labels.dim() == 0:
+            labels = labels.unsqueeze(0)
+
+        original_labels = labels
+
+        if cutmix_or_mixup is not None and imgs.size(0) > 1 and np.random.rand() < mixup_prob:
+            imgs, labels = cutmix_or_mixup(imgs, labels)
 
         optimizer.zero_grad()
 
@@ -240,10 +272,12 @@ def _train_epoch(
         nn.utils.clip_grad_norm_(model.parameters(), max_norm=grad_clip)
 
         optimizer.step()
+        if step_scheduler is not None:
+            step_scheduler.step()
 
         total_loss += loss.item() * imgs.size(0)
         preds = logits.argmax(dim=-1)
-        correct += (preds == labels).sum().item()
+        correct += (preds == original_labels).sum().item()
         total += imgs.size(0)
 
     return total_loss / total, correct / total
@@ -293,6 +327,18 @@ def _val_epoch(
 # Main training function
 # ---------------------------------------------------------------------------
 
+def _get_num_classes(model: nn.Module) -> int:
+    """Helper to determine the number of classes from a model instance."""
+    if hasattr(model, "head") and hasattr(model.head, "head"):
+        # AQHMNet
+        return model.head.head[-1].out_features
+    elif hasattr(model, "resnet") and hasattr(model.resnet, "fc"):
+        # ResNet18Baseline
+        return model.resnet.fc.out_features
+    else:
+        raise ValueError("Could not automatically determine num_classes from model.")
+
+
 def train_model(
     model: AQHMNet,
     loaders: dict[str, DataLoader],
@@ -312,6 +358,10 @@ def train_model(
     warmup_epochs: int = 5,
     use_focal: bool = False,
     focal_gamma: float = 2.0,
+    scheduler_type: str = "cosine",
+    cutmix_alpha: float = 0.0,
+    mixup_alpha: float = 0.0,
+    mixup_prob: float = 0.5,
 ) -> dict:
     """Full training procedure for one experimental run.
 
@@ -329,6 +379,15 @@ def train_model(
         verbose           : print per-epoch progress.
         debug_batches     : if set, only process this many batches per epoch.
                             Use 2–4 in debug mode to validate the pipeline quickly.
+        class_weights     : inverse-frequency class weights for cross-entropy.
+        label_smoothing   : label smoothing factor.
+        warmup_epochs     : warmup epochs for cosine scheduler.
+        use_focal         : use Focal Loss instead of CE.
+        focal_gamma       : Focal Loss focus parameter.
+        scheduler_type    : learning rate scheduler type ('cosine', 'onecycle', 'cosine_restarts').
+        cutmix_alpha      : CutMix alpha parameter.
+        mixup_alpha       : MixUp alpha parameter.
+        mixup_prob        : probability of applying CutMix/MixUp.
 
     Returns:
         history dict with keys:
@@ -348,11 +407,38 @@ def train_model(
     # ── Optimiser + scheduler ───────────────────────────────────────────────
     optimizer = _build_optimizer(model)
 
-    # Linear warmup for first `warmup_epochs`, then CosineAnnealingLR
-    _w = max(1, warmup_epochs)
-    _warmup = LinearLR(optimizer, start_factor=0.1, end_factor=1.0, total_iters=_w)
-    _cosine = CosineAnnealingLR(optimizer, T_max=max(1, n_epochs - _w), eta_min=1e-6)
-    scheduler = SequentialLR(optimizer, schedulers=[_warmup, _cosine], milestones=[_w])
+    step_scheduler = None
+    epoch_scheduler = None
+
+    if scheduler_type == "onecycle":
+        steps_per_epoch = debug_batches if debug_batches is not None else len(loaders["train"])
+        total_steps = n_epochs * steps_per_epoch
+        max_lrs = [group["lr"] for group in optimizer.param_groups]
+        step_scheduler = OneCycleLR(
+            optimizer,
+            max_lr=max_lrs,
+            total_steps=total_steps,
+            cycle_momentum=True,
+        )
+        if verbose:
+            print(f"[{run_id}] Using OneCycleLR scheduler (early stopping bypassed)")
+        patience = n_epochs
+    elif scheduler_type == "cosine_restarts":
+        epoch_scheduler = CosineAnnealingWarmRestarts(
+            optimizer,
+            T_0=10,
+            T_mult=2,
+            eta_min=1e-6,
+        )
+        if verbose:
+            print(f"[{run_id}] Using CosineAnnealingWarmRestarts scheduler")
+    else:
+        _w = max(1, warmup_epochs)
+        _warmup = LinearLR(optimizer, start_factor=0.1, end_factor=1.0, total_iters=_w)
+        _cosine = CosineAnnealingLR(optimizer, T_max=max(1, n_epochs - _w), eta_min=1e-6)
+        epoch_scheduler = SequentialLR(optimizer, schedulers=[_warmup, _cosine], milestones=[_w])
+        if verbose:
+            print(f"[{run_id}] Using CosineAnnealingLR scheduler with warmup")
 
     w = class_weights.to(device) if class_weights is not None else None
     if use_focal:
@@ -379,6 +465,8 @@ def train_model(
     }
     t0 = time.time()
 
+    num_classes = _get_num_classes(model)
+
     for epoch in range(1, n_epochs + 1):
         t_ep = time.time()
 
@@ -386,12 +474,18 @@ def train_model(
             model, loaders["train"], criterion, optimizer,
             device, grad_clip, contrastive_weight,
             max_batches=debug_batches,
+            step_scheduler=step_scheduler,
+            cutmix_alpha=cutmix_alpha,
+            mixup_alpha=mixup_alpha,
+            mixup_prob=mixup_prob,
+            num_classes=num_classes,
         )
         val_loss, val_acc = _val_epoch(
             model, loaders["val"], criterion, device
         )
 
-        scheduler.step()
+        if epoch_scheduler is not None:
+            epoch_scheduler.step()
 
         # After warmup completes, reset early-stopping state so any degenerate
         # low-loss checkpoint from epoch 1 (e.g. all-class prediction with
@@ -411,7 +505,7 @@ def train_model(
                 f"[{run_id}] Epoch {epoch:03d}/{n_epochs} | "
                 f"Train Loss: {train_loss:.4f}  Acc: {train_acc:.4f} | "
                 f"Val Loss: {val_loss:.4f}  Acc: {val_acc:.4f} | "
-                f"LR(G1): {scheduler.get_last_lr()[0]:.6f} | "
+                f"LR(G1): {optimizer.param_groups[0]['lr']:.6f} | "
                 f"{elapsed:.1f}s"
             )
 
