@@ -242,34 +242,36 @@ class UIBBlock(nn.Module):
 # ---------------------------------------------------------------------------
 
 class SuperpixelProjector(nn.Module):
-    """Two-layer MLP projector: 96 feature channels -> E=9 encoding elements.
+    """Spatially-aware superpixel projector capturing local neighborhood correlations.
 
-    Applied *per spatial position* (i.e., per superpixel) after flattening
-    the 7×7 backbone output to (B, 49, 96).
-
-    Design (Section 4.5):
-        Linear(96 -> 48) + ReLU6   [first compression]
-        Linear(48 -> 9)  + ReLU6   [final to E=9 elements]
-
-    E=9 rationale:
-        • 9/3 = 3 qe qubits (each U3 gate encodes 3 Euler angles)
-        • Consistent with Fan et al. (2025) superpixel element count
-        • 49×9 = 441 total values — richer than Wu et al.'s 16×16=256
+    Replaces the position-independent projection with a 3x3 depthwise separable conv
+    over the 7x7 spatial grid before flattening. This allows spatial communication
+    and local structure preservation.
     """
 
     def __init__(self, in_dim: int = 96, mid_dim: int = 48, out_dim: int = 9) -> None:
         super().__init__()
-        self.proj = nn.Sequential(
-            nn.Linear(in_dim, mid_dim),
+        self.spatial_conv = nn.Sequential(
+            nn.Conv2d(in_dim, in_dim, kernel_size=3, padding=1, groups=in_dim, bias=False),
+            nn.BatchNorm2d(in_dim),
             nn.ReLU6(inplace=True),
-            nn.Dropout(0.15),
-            nn.Linear(mid_dim, out_dim),
+            nn.Conv2d(in_dim, mid_dim, kernel_size=1, bias=False),
+            nn.BatchNorm2d(mid_dim),
+            nn.ReLU6(inplace=True),
+        )
+        self.proj = nn.Sequential(
+            nn.Dropout2d(0.15),
+            nn.Conv2d(mid_dim, out_dim, kernel_size=1, bias=False),
             nn.ReLU6(inplace=True),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # x : (B, 49, 96)  ->  out : (B, 49, 9)
-        return self.proj(x)
+        # x : (B, in_dim, 7, 7)
+        x = self.spatial_conv(x)  # (B, mid_dim, 7, 7)
+        x = self.proj(x)          # (B, out_dim, 7, 7)
+        # Flatten spatial dims to 49 superpixels: (B, out_dim, 49) -> (B, 49, out_dim)
+        B, C, H, W = x.shape
+        return x.view(B, C, H * W).permute(0, 2, 1)
 
 
 # ---------------------------------------------------------------------------
@@ -277,37 +279,33 @@ class SuperpixelProjector(nn.Module):
 # ---------------------------------------------------------------------------
 
 class SpatialSuperpixelAttention(nn.Module):
-    """SE-style attention over the 49 superpixel positions (Section 4.6).
+    """Spatially-aware superpixel attention utilizing 2D convolutions.
 
-    Learns WHICH patches are diagnostically relevant BEFORE quantum encoding,
-    preventing the quantum circuit from wasting capacity on background regions.
-
-    This is a novel component absent from all prior HQCNN literature.
-
-    Mechanism:
-        (B, 49, 9)
-          ↓ Global average pool over element dim -> (B, 49)
-          ↓ FC(49, 12) + ReLU
-          ↓ FC(12, 49) + Sigmoid -> spatial importance weights (B, 49)
-          ↓ Broadcast multiply  -> (B, 49, 9)
+    Rather than treating the 7x7 grid as a flat 49-D vector, this module
+    operates directly on the 2D spatial topology to learn local attention weight
+    distributions using 2D conv layers.
     """
 
     def __init__(self, n_patches: int = 49, hidden: int = 12) -> None:
         super().__init__()
-        self.gate = nn.Sequential(
-            nn.Linear(n_patches, hidden),
+        self.conv = nn.Sequential(
+            nn.Conv2d(1, hidden, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(hidden),
             nn.ReLU(inplace=True),
-            nn.Linear(hidden, n_patches),
+            nn.Conv2d(hidden, 1, kernel_size=3, padding=1, bias=False),
             nn.Sigmoid(),
         )
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         # x : (B, 49, 9)
-        # Pool over element dimension to get per-patch scalar descriptor
-        desc = x.mean(dim=-1)                    # (B, 49)
-        weights = self.gate(desc)                # (B, 49)
-        # Return both the re-weighted superpixels and the raw attention weights;
-        # the weights are reused for attention-conditioned quantum encoding.
+        B, P, E = x.shape
+        H = W = 7
+        # Pool over element dimension to get spatial descriptor: (B, 49) -> (B, 1, 7, 7)
+        desc = x.mean(dim=-1).view(B, 1, H, W)
+        
+        # Apply 2D spatial convolutions
+        weights = self.conv(desc).view(B, P)     # (B, 49)
+        
         return x * weights.unsqueeze(-1), weights   # (B, 49, 9), (B, 49)
 
 
@@ -341,6 +339,7 @@ class ClassicalBackbone(nn.Module):
         in_channels: int = 1,
         width_mult: float = 1.0,
         depth: int = 1,
+        img_size: int = 28,
     ) -> None:
         super().__init__()
 
@@ -350,36 +349,70 @@ class ClassicalBackbone(nn.Module):
         c_stem, c1, c2, c3 = ch(16), ch(24), ch(48), ch(96)
         self.out_channels = c3   # consumed by the projector / quantum / fusion
 
+        # Determine progressive strides based on resolution
+        if img_size >= 224:
+            stem_stride = 2      # 224 -> 112
+            stage1_stride = 2    # 112 -> 56
+            stage2_stride = 2    # 56 -> 28
+            stage3_stride = 2    # 28 -> 14
+            self.use_downsample_block = True
+        elif img_size >= 128:
+            stem_stride = 2      # 128 -> 64
+            stage1_stride = 2    # 64 -> 32
+            stage2_stride = 2    # 32 -> 16
+            stage3_stride = 2    # 16 -> 8
+            self.use_downsample_block = False
+        elif img_size >= 64:
+            stem_stride = 2      # 64 -> 32
+            stage1_stride = 1    # 32 -> 32
+            stage2_stride = 2    # 32 -> 16
+            stage3_stride = 2    # 16 -> 8
+            self.use_downsample_block = False
+        else:
+            stem_stride = 1      # 28 -> 28
+            stage1_stride = 1    # 28 -> 28
+            stage2_stride = 2    # 28 -> 14
+            stage3_stride = 2    # 14 -> 7
+            self.use_downsample_block = False
+
         # --- Stem -----------------------------------------------------------
         self.stem = nn.Sequential(
-            nn.Conv2d(in_channels, c_stem, kernel_size=3, padding=1, bias=False),
+            nn.Conv2d(in_channels, c_stem, kernel_size=3, stride=stem_stride, padding=1, bias=False),
             nn.BatchNorm2d(c_stem),
             nn.ReLU6(inplace=True),
         )
 
         # --- Stage 1: UIB(+depth) + SE -------------------------------------
-        self.stage1 = self._make_stage(c_stem, c1, expansion=4, stride=1,
+        self.stage1 = self._make_stage(c_stem, c1, expansion=4, stride=stage1_stride,
                                        extra_dw=False, n=depth)
         self.se1 = SEBlock(c1, ratio=0.25)
 
         # --- Stage 2: UIB(+depth) + CBAM (mid resolution) ------------------
-        self.stage2 = self._make_stage(c1, c2, expansion=6, stride=2,
+        self.stage2 = self._make_stage(c1, c2, expansion=6, stride=stage2_stride,
                                        extra_dw=True, n=depth)
         self.cbam = CBAMBlock(c2, ratio=0.25, dropout=0.10)
 
         # --- Stage 3: UIB(+depth) + SE -------------------------------------
-        self.stage3 = self._make_stage(c2, c3, expansion=6, stride=2,
+        self.stage3 = self._make_stage(c2, c3, expansion=6, stride=stage3_stride,
                                        extra_dw=True, n=depth)
         self.se3 = SEBlock(c3, ratio=0.25)
+
+        # Learnable stride-2 transition block to downsample from 14x14 to 7x7
+        if self.use_downsample_block:
+            self.downsample_conv = nn.Sequential(
+                nn.Conv2d(c3, c3, kernel_size=3, stride=2, padding=1, groups=c3, bias=False),
+                nn.BatchNorm2d(c3),
+                nn.ReLU6(inplace=True),
+                nn.Conv2d(c3, c3, kernel_size=1, bias=False),
+                nn.BatchNorm2d(c3),
+            )
+        else:
+            self.downsample_conv = nn.Identity()
 
         # Superpixel projector / SSA hidden also scale modestly with width.
         self._proj_mid = ch(48)
 
         # --- Resolution-adaptive pooling ------------------------------------
-        # Forces the stage-3 feature map to a fixed 7×7 grid for ANY input
-        # resolution (28, 64, 128, 224, ...), so the 49-superpixel / SSA /
-        # quantum design is unchanged. At 28×28 stage3 already yields 7×7, so
-        # this is a no-op there (backward compatible).
         self.feat_pool = nn.AdaptiveAvgPool2d((7, 7))
 
         # --- Superpixel projection + attention ------------------------------
@@ -409,30 +442,29 @@ class ClassicalBackbone(nn.Module):
                            used for attention-conditioned quantum encoding.
         """
         # Feature extraction
-        x = self.stem(x)       # (B, 16, 28, 28)
+        x = self.stem(x)
 
-        x = self.stage1(x)     # (B, 24, 28, 28)
-        x = self.se1(x)        # channel attention
+        x = self.stage1(x)     # channel attention
+        x = self.se1(x)
 
-        x = self.stage2(x)     # (B, 48, 14, 14)
-        x = self.cbam(x)       # spatial + channel attention
+        x = self.stage2(x)     # spatial + channel attention
+        x = self.cbam(x)
 
-        x = self.stage3(x)     # (B, 96, H', W')  (7×7 @28px, 56×56 @224px)
-        x = self.se3(x)        # channel attention
+        x = self.stage3(x)     # channel attention
+        x = self.se3(x)
 
-        # Resolution-adaptive: collapse any feature-map size to a 7×7 grid so the
-        # downstream 49-superpixel / SSA / quantum stack is input-size agnostic.
+        # Learnable spatial downsampling if enabled
+        if self.use_downsample_block:
+            x = self.downsample_conv(x)
+
+        # Resolution-adaptive fallback average pool to 7×7 grid
         x = self.feat_pool(x)  # (B, 96, 7, 7)
 
-        # Save global classical context for CQ fusion (before reshaping)
+        # Save global classical context for CQ fusion (before flattening)
         z_c = x.mean(dim=[2, 3])   # (B, 96) — global average pool
 
-        # Reshape 7×7 spatial grid -> 49 superpixel vectors
-        B, C, H, W = x.shape     # C=96, H=W=7
-        superpixels = x.view(B, C, H * W).permute(0, 2, 1)  # (B, 49, 96)
-
-        # Compress each superpixel to E=9 elements
-        superpixels = self.projector(superpixels)   # (B, 49, 9)
+        # Compress spatial grid of shape (B, C, 7, 7) to E=9 elements using spatial convolutions
+        superpixels = self.projector(x)             # (B, 49, 9)
 
         # Apply spatial superpixel attention (novel — prioritises relevant patches)
         superpixels, attn_weights = self.ssa(superpixels)   # (B, 49, 9), (B, 49)

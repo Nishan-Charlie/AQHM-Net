@@ -353,6 +353,9 @@ def _build_transforms(
     is_medical: bool = False,
     pre_ops: list | None = None,
     resize: int | None = None,
+    use_randaugment: bool = False,
+    randaugment_ops: int = 2,
+    randaugment_magnitude: int = 9,
 ) -> transforms.Compose:
     """Build the full torchvision transform pipeline.
 
@@ -364,29 +367,39 @@ def _build_transforms(
     tfm_list: list = list(pre_ops) if pre_ops else []
     if resize is not None:
         tfm_list.append(transforms.Resize(resize, antialias=True))
+
+    if is_train and use_randaugment:
+        tfm_list.append(transforms.RandAugment(num_ops=randaugment_ops, magnitude=randaugment_magnitude))
+
     tfm_list.append(transforms.ToTensor())
 
     if is_train:
-        tfm_list += [
-            transforms.RandomHorizontalFlip(p=0.5),
-            transforms.RandomVerticalFlip(p=0.3 if is_medical else 0.0),
-            transforms.RandomRotation(degrees=25 if is_medical else 15),
-        ]
-        if is_medical:
-            tfm_list.append(
-                transforms.RandomAffine(
-                    degrees=0, translate=(0.08, 0.08), scale=(0.90, 1.10)
+        if not use_randaugment:
+            tfm_list += [
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.RandomVerticalFlip(p=0.3 if is_medical else 0.0),
+                transforms.RandomRotation(degrees=25 if is_medical else 15),
+            ]
+            if is_medical:
+                tfm_list.append(
+                    transforms.RandomAffine(
+                        degrees=0, translate=(0.08, 0.08), scale=(0.90, 1.10)
+                    )
                 )
-            )
-        if is_rgb:
-            jitter_strength = 0.2 if is_medical else 0.1
-            tfm_list.append(
-                transforms.ColorJitter(
-                    brightness=jitter_strength,
-                    contrast=jitter_strength,
-                    saturation=jitter_strength if is_medical else 0.0,
+            if is_rgb:
+                jitter_strength = 0.2 if is_medical else 0.1
+                tfm_list.append(
+                    transforms.ColorJitter(
+                        brightness=jitter_strength,
+                        contrast=jitter_strength,
+                        saturation=jitter_strength if is_medical else 0.0,
+                    )
                 )
-            )
+        else:
+            tfm_list.append(transforms.RandomHorizontalFlip(p=0.5))
+            if is_medical:
+                tfm_list.append(transforms.RandomVerticalFlip(p=0.3))
+
         tfm_list.append(AddGaussianNoise(sigma=0.03 if is_medical else 0.02))
 
     tfm_list.append(transforms.Normalize(mean=mean, std=std))
@@ -507,6 +520,9 @@ def get_dataloaders(
     seed: int = 42,
     use_balanced_sampler: bool = False,
     img_size: int = 28,
+    use_randaugment: bool = False,
+    randaugment_ops: int = 2,
+    randaugment_magnitude: int = 9,
 ) -> dict[str, DataLoader]:
     """Build train/val/test DataLoaders for the requested dataset.
 
@@ -555,9 +571,14 @@ def get_dataloaders(
               f"-> recomputed mean={tuple(round(m, 4) for m in mean)} "
               f"std={tuple(round(s, 4) for s in std)}")
 
-    resize    = cfg.get("resize")
-    train_tfm = _build_transforms(mean, std, is_rgb, is_train=True,  is_medical=is_medical, pre_ops=pre_ops, resize=resize)
-    eval_tfm  = _build_transforms(mean, std, is_rgb, is_train=False, is_medical=is_medical, pre_ops=pre_ops, resize=resize)
+    resize = img_size if img_size != 28 else cfg.get("resize")
+    train_tfm = _build_transforms(
+        mean, std, is_rgb, is_train=True, is_medical=is_medical, pre_ops=pre_ops, resize=resize,
+        use_randaugment=use_randaugment, randaugment_ops=randaugment_ops, randaugment_magnitude=randaugment_magnitude
+    )
+    eval_tfm  = _build_transforms(
+        mean, std, is_rgb, is_train=False, is_medical=is_medical, pre_ops=pre_ops, resize=resize
+    )
 
     # ── MNIST ───────────────────────────────────────────────────────────────
     if name == "mnist":

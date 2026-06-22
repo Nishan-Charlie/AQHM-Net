@@ -126,6 +126,18 @@ def parse_args() -> argparse.Namespace:
         "--mixup_prob", type=float, default=0.5,
         help="Probability of applying CutMix/MixUp on a batch.",
     )
+    parser.add_argument(
+        "--use_randaugment", action="store_true",
+        help="Use RandAugment automatic augmentation policy.",
+    )
+    parser.add_argument(
+        "--randaugment_ops", type=int, default=2,
+        help="Number of augmentation operations for RandAugment.",
+    )
+    parser.add_argument(
+        "--randaugment_magnitude", type=int, default=9,
+        help="Magnitude for RandAugment operations.",
+    )
 
 
     # ── Output ───────────────────────────────────────────────────────────────
@@ -210,11 +222,11 @@ def build_model(
         return ResNet18Baseline(in_channels=in_channels, num_classes=num_classes)
 
     if args.ablation == "no_uib":
-        return AQHMNet.ablation_no_uib(in_channels, num_classes)
+        return AQHMNet.ablation_no_uib(in_channels, num_classes, img_size=args.img_size)
     elif args.ablation == "z_basis":
-        return AQHMNet.ablation_z_basis(in_channels, num_classes)
+        return AQHMNet.ablation_z_basis(in_channels, num_classes, img_size=args.img_size)
     elif args.ablation == "no_quantum":
-        return AQHMNet.ablation_no_quantum(in_channels, num_classes, scale=args.scale)
+        return AQHMNet.ablation_no_quantum(in_channels, num_classes, scale=args.scale, img_size=args.img_size)
     else:
         return AQHMNet(
             in_channels=in_channels,
@@ -224,6 +236,7 @@ def build_model(
             n_quantum_heads=args.n_quantum_heads,
             attention_encoding=args.attention_encoding,
             scale=args.scale,
+            img_size=args.img_size,
         )
 
 
@@ -279,6 +292,8 @@ def main() -> None:
         dataset_tag += f"_cutmix{args.cutmix_alpha}"
     if args.mixup_alpha > 0.0:
         dataset_tag += f"_mixup{args.mixup_alpha}"
+    if args.use_randaugment:
+        dataset_tag += f"_ra{args.randaugment_ops}_{args.randaugment_magnitude}"
 
     dirs = make_output_dirs(args.output_dir, dataset_tag)
     print(f"[output] Results -> {dirs['root']}")
@@ -303,6 +318,9 @@ def main() -> None:
         seed=args.base_seed,
         use_balanced_sampler=args.use_balanced_sampler,
         img_size=args.img_size,
+        use_randaugment=args.use_randaugment,
+        randaugment_ops=args.randaugment_ops,
+        randaugment_magnitude=args.randaugment_magnitude,
     )
 
     cfg = DATASET_CONFIG[args.dataset.lower()]
