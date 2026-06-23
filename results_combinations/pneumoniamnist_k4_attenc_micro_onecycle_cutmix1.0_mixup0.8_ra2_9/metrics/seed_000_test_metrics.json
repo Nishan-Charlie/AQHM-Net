@@ -1,0 +1,23 @@
+{
+  "weighted_f1": 0.9381447657703365,
+  "macro_f1": 0.9331642144427532,
+  "weighted_accuracy": 0.9391025641025641,
+  "weighted_precision": 0.9420518207282913,
+  "weighted_recall": 0.9391025641025641,
+  "per_class_auc": [
+    0.9760355029585799
+  ],
+  "mean_auc": 0.9760355029585799,
+  "confusion_matrix": [
+    [
+      200,
+      34
+    ],
+    [
+      4,
+      386
+    ]
+  ],
+  "report": "              precision    recall  f1-score   support\n\n           0       0.98      0.85      0.91       234\n           1       0.92      0.99      0.95       390\n\n    accuracy                           0.94       624\n   macro avg       0.95      0.92      0.93       624\nweighted avg       0.94      0.94      0.94       624\n",
+  "seed": 0
+}

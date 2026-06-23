@@ -37,6 +37,20 @@ def get_free_memory():
 
 print(f"Loaded {len(jobs)} jobs in the sweep queue.")
 
+def get_vram_requirement(scale, img_size, k):
+    if img_size == 224:
+        base = 9000
+    else:
+        if scale == "micro":
+            base = 1800
+        elif scale == "small":
+            base = 2500
+        elif scale == "medium":
+            base = 4000
+        else: # large
+            base = 6500
+    return base + 200 * k
+
 # To prevent flooding the console, track status printing
 last_status_time = 0
 
@@ -62,10 +76,10 @@ while jobs or running_jobs:
         # Count jobs running on this GPU
         gpu_running_count = sum(1 for j in running_jobs if j["gpu_id"] == gpu_id)
         
-        while gpu_running_count < 4 and jobs:
+        while gpu_running_count < 8 and jobs:
             # Check the next job
             next_job = jobs[0]
-            req_mem = 8500 if next_job["img_size"] == 224 else 2500
+            req_mem = get_vram_requirement(next_job["scale"], next_job["img_size"], next_job["k"])
             
             if free_mem[gpu_id] >= req_mem:
                 # We can run it!
@@ -117,8 +131,8 @@ while jobs or running_jobs:
         gpu_0_jobs = [f"{j['scale']}_k{j['k']}_r{j['img_size']}" for j in running_jobs if j["gpu_id"] == 0]
         gpu_1_jobs = [f"{j['scale']}_k{j['k']}_r{j['img_size']}" for j in running_jobs if j["gpu_id"] == 1]
         free_mem_live = get_free_memory()
-        print(f"Status: GPU 0 running {len(gpu_0_jobs)}/4 {gpu_0_jobs} (Free VRAM: {free_mem_live[0]}MiB) | "
-              f"GPU 1 running {len(gpu_1_jobs)}/4 {gpu_1_jobs} (Free VRAM: {free_mem_live[1]}MiB) | "
+        print(f"Status: GPU 0 running {len(gpu_0_jobs)}/8 {gpu_0_jobs} (Free VRAM: {free_mem_live[0]}MiB) | "
+              f"GPU 1 running {len(gpu_1_jobs)}/8 {gpu_1_jobs} (Free VRAM: {free_mem_live[1]}MiB) | "
               f"Queue length: {len(jobs)}")
         last_status_time = current_time
         
