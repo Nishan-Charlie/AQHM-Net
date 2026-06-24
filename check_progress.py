@@ -79,7 +79,8 @@ print("=" * 78)
 # Show tail of experiment log
 log = os.path.join(RESULTS, "experiment_log.txt")
 if os.path.isfile(log):
-    lines = [l.rstrip() for l in open(log).readlines() if l.strip()]
+    with open(log, encoding='utf-8', errors='replace') as f:
+        lines = [l.rstrip() for l in f.readlines() if l.strip()]
     print(f"\nLast log entries ({os.path.basename(log)}):")
     for l in lines[-5:]:
         print(" ", l)
