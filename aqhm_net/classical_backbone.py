@@ -309,6 +309,59 @@ class SpatialSuperpixelAttention(nn.Module):
         return x * weights.unsqueeze(-1), weights   # (B, 49, 9), (B, 49)
 
 
+# ===========================================================================
+# LEGACY (original) projector + SSA — the FC/MLP versions used in commit
+# 83674cd, before da0cb12 replaced them with 2D-conv variants. These are the
+# modules that produced the "micro quantum beats no-quantum" result. Kept so
+# both architectures live in the tree; selected via ClassicalBackbone(legacy=).
+# ===========================================================================
+
+class SuperpixelProjectorLegacy(nn.Module):
+    """Original position-independent MLP projector: 96 channels -> E=9 elements.
+
+    Applied per superpixel after flattening the 7×7 grid to (B, 49, 96).
+        Linear(96 -> 48) + ReLU6  ->  Linear(48 -> 9) + ReLU6
+    """
+
+    def __init__(self, in_dim: int = 96, mid_dim: int = 48, out_dim: int = 9) -> None:
+        super().__init__()
+        self.proj = nn.Sequential(
+            nn.Linear(in_dim, mid_dim),
+            nn.ReLU6(inplace=True),
+            nn.Dropout(0.15),
+            nn.Linear(mid_dim, out_dim),
+            nn.ReLU6(inplace=True),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # x : (B, 49, 96)  ->  (B, 49, 9)
+        return self.proj(x)
+
+
+class SpatialSuperpixelAttentionLegacy(nn.Module):
+    """Original SE-style attention over the 49 superpixel positions.
+
+        (B, 49, 9) -> mean over elements -> (B, 49)
+                   -> FC(49, 12) + ReLU -> FC(12, 49) + Sigmoid -> weights
+                   -> broadcast multiply -> (B, 49, 9)
+    """
+
+    def __init__(self, n_patches: int = 49, hidden: int = 12) -> None:
+        super().__init__()
+        self.gate = nn.Sequential(
+            nn.Linear(n_patches, hidden),
+            nn.ReLU(inplace=True),
+            nn.Linear(hidden, n_patches),
+            nn.Sigmoid(),
+        )
+
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        # x : (B, 49, 9)
+        desc = x.mean(dim=-1)            # (B, 49)
+        weights = self.gate(desc)        # (B, 49)
+        return x * weights.unsqueeze(-1), weights   # (B, 49, 9), (B, 49)
+
+
 # ---------------------------------------------------------------------------
 # Full Classical Backbone
 # ---------------------------------------------------------------------------
@@ -340,8 +393,13 @@ class ClassicalBackbone(nn.Module):
         width_mult: float = 1.0,
         depth: int = 1,
         img_size: int = 28,
+        legacy: bool = True,
     ) -> None:
         super().__init__()
+        # legacy=True  -> original FC projector + SE-style SSA (reproduces the
+        #                 "quantum beats no-quantum" result; this is the default).
+        # legacy=False -> 2D-conv projector + conv SSA (the newer architecture).
+        self.legacy = legacy
 
         def ch(c: int) -> int:
             return _make_divisible(c * width_mult)
@@ -417,8 +475,12 @@ class ClassicalBackbone(nn.Module):
 
         # --- Superpixel projection + attention ------------------------------
         # Projector input = scaled backbone output channels (self.out_channels).
-        self.projector = SuperpixelProjector(self.out_channels, self._proj_mid, 9)
-        self.ssa = SpatialSuperpixelAttention(n_patches=49, hidden=12)
+        if self.legacy:
+            self.projector = SuperpixelProjectorLegacy(self.out_channels, self._proj_mid, 9)
+            self.ssa = SpatialSuperpixelAttentionLegacy(n_patches=49, hidden=12)
+        else:
+            self.projector = SuperpixelProjector(self.out_channels, self._proj_mid, 9)
+            self.ssa = SpatialSuperpixelAttention(n_patches=49, hidden=12)
 
     @staticmethod
     def _make_stage(in_c: int, out_c: int, expansion: int, stride: int,
@@ -463,10 +525,17 @@ class ClassicalBackbone(nn.Module):
         # Save global classical context for CQ fusion (before flattening)
         z_c = x.mean(dim=[2, 3])   # (B, 96) — global average pool
 
-        # Compress spatial grid of shape (B, C, 7, 7) to E=9 elements using spatial convolutions
-        superpixels = self.projector(x)             # (B, 49, 9)
+        # Compress to E=9 elements per superpixel.
+        if self.legacy:
+            # Original path: flatten the 7×7 grid to 49 superpixels, then MLP.
+            B, C, H, W = x.shape                                # C=96, H=W=7
+            superpixels = x.view(B, C, H * W).permute(0, 2, 1)  # (B, 49, 96)
+            superpixels = self.projector(superpixels)           # (B, 49, 9)
+        else:
+            # Newer path: spatial conv directly on the (B, C, 7, 7) grid.
+            superpixels = self.projector(x)                     # (B, 49, 9)
 
-        # Apply spatial superpixel attention (novel — prioritises relevant patches)
+        # Apply spatial superpixel attention (prioritises relevant patches)
         superpixels, attn_weights = self.ssa(superpixels)   # (B, 49, 9), (B, 49)
 
         return superpixels, z_c, attn_weights

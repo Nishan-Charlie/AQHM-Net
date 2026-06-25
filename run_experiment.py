@@ -107,6 +107,12 @@ def parse_args() -> argparse.Namespace:
         choices=["aqhm_net", "resnet18"],
         help="Model architecture to use (default: aqhm_net).",
     )
+    parser.add_argument(
+        "--new_backbone", action="store_true",
+        help="Use the newer 2D-conv superpixel projector + conv SSA. "
+             "Default (flag absent) uses the original FC backbone that "
+             "reproduces the 'quantum beats no-quantum' result.",
+    )
 
     # ── Advanced Preprocessing / Schedulers ──────────────────────────────────
     parser.add_argument(
@@ -221,12 +227,19 @@ def build_model(
     if args.model == "resnet18":
         return ResNet18Baseline(in_channels=in_channels, num_classes=num_classes)
 
+    # legacy=True -> original FC backbone (default; reproduces quantum>no-quantum).
+    # Pass --new_backbone to use the newer 2D-conv projector + SSA instead.
+    legacy = not args.new_backbone
+
     if args.ablation == "no_uib":
-        return AQHMNet.ablation_no_uib(in_channels, num_classes, img_size=args.img_size)
+        return AQHMNet.ablation_no_uib(in_channels, num_classes, img_size=args.img_size,
+                                       legacy_backbone=legacy)
     elif args.ablation == "z_basis":
-        return AQHMNet.ablation_z_basis(in_channels, num_classes, img_size=args.img_size)
+        return AQHMNet.ablation_z_basis(in_channels, num_classes, img_size=args.img_size,
+                                        legacy_backbone=legacy)
     elif args.ablation == "no_quantum":
-        return AQHMNet.ablation_no_quantum(in_channels, num_classes, scale=args.scale, img_size=args.img_size)
+        return AQHMNet.ablation_no_quantum(in_channels, num_classes, scale=args.scale,
+                                           img_size=args.img_size, legacy_backbone=legacy)
     else:
         return AQHMNet(
             in_channels=in_channels,
@@ -237,6 +250,7 @@ def build_model(
             attention_encoding=args.attention_encoding,
             scale=args.scale,
             img_size=args.img_size,
+            legacy_backbone=legacy,
         )
 
 

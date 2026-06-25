@@ -152,6 +152,7 @@ class AQHMNet(nn.Module):
         attention_encoding: bool = False,
         scale: str = "small",
         img_size: int = 28,
+        legacy_backbone: bool = True,
     ) -> None:
         super().__init__()
         if scale not in SCALE_CONFIGS:
@@ -170,6 +171,7 @@ class AQHMNet(nn.Module):
             width_mult=cfg["width_mult"],
             depth=cfg["depth"],
             img_size=img_size,
+            legacy=legacy_backbone,
         )
         backbone_dim = self.backbone.out_channels   # scaled (96 / 144 / 192)
         self.quantum  = QuantumLayer(
@@ -240,7 +242,8 @@ class AQHMNet(nn.Module):
     # ── Ablation helpers ────────────────────────────────────────────────────
 
     @classmethod
-    def ablation_no_uib(cls, in_channels: int, num_classes: int, img_size: int = 28) -> "AQHMNet":
+    def ablation_no_uib(cls, in_channels: int, num_classes: int, img_size: int = 28,
+                        legacy_backbone: bool = True) -> "AQHMNet":
         """A1 — Replace UIB backbone with single Conv2d (Wu et al., 2025).
 
         Tests: contribution of MobileNetV4-style feature extraction.
@@ -252,7 +255,8 @@ class AQHMNet(nn.Module):
             "superpixel projector and SSA retained.",
             stacklevel=2,
         )
-        model = cls(in_channels=in_channels, num_classes=num_classes, img_size=img_size)
+        model = cls(in_channels=in_channels, num_classes=num_classes, img_size=img_size,
+                    legacy_backbone=legacy_backbone)
         # Swap the full backbone stem+stages with a single Conv2d
         model.backbone.stage1 = nn.Identity()
         model.backbone.se1    = nn.Identity()
@@ -269,7 +273,8 @@ class AQHMNet(nn.Module):
         return model
 
     @classmethod
-    def ablation_z_basis(cls, in_channels: int, num_classes: int, img_size: int = 28) -> "AQHMNet":
+    def ablation_z_basis(cls, in_channels: int, num_classes: int, img_size: int = 28,
+                         legacy_backbone: bool = True) -> "AQHMNet":
         """A6 — Replace X-basis measurement with Z-basis (default PennyLane).
 
         Tests: contribution of the empirically validated X-basis measurement
@@ -282,12 +287,14 @@ class AQHMNet(nn.Module):
             "Edit quantum_circuit.py build_quantum_circuit() accordingly.",
             stacklevel=2,
         )
-        return cls(in_channels=in_channels, num_classes=num_classes, img_size=img_size)
+        return cls(in_channels=in_channels, num_classes=num_classes, img_size=img_size,
+                   legacy_backbone=legacy_backbone)
 
     @classmethod
-    def ablation_no_quantum(cls, in_channels: int, num_classes: int, scale: str = "small", img_size: int = 28) -> "AQHMNet":
+    def ablation_no_quantum(cls, in_channels: int, num_classes: int, scale: str = "small",
+                            img_size: int = 28, legacy_backbone: bool = True) -> "AQHMNet":
         """Ablation: Bypass the Quantum Layer entirely.
-        
+
         Tests: Classical-only baseline using the exact same backbone and classification head.
         """
         import warnings
@@ -295,7 +302,8 @@ class AQHMNet(nn.Module):
             "ABLATION: No Quantum Circuit. Bypassing quantum layer.",
             stacklevel=2,
         )
-        model = cls(in_channels=in_channels, num_classes=num_classes, scale=scale, img_size=img_size)
+        model = cls(in_channels=in_channels, num_classes=num_classes, scale=scale,
+                    img_size=img_size, legacy_backbone=legacy_backbone)
         model.ablate_quantum = True
         return model
 
