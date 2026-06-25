@@ -257,6 +257,24 @@ def main() -> None:
     else:
         debug_batches = None
 
+    # ── DermaMNIST-specific corrections ──────────────────────────────────────
+    # DermaMNIST is the only multi-class (7) *and* severely imbalanced dataset
+    # (~67% melanocytic nevi). Label-blending augmentation (CutMix/MixUp) wipes
+    # out the class prior the model must exploit: training collapses to floor
+    # accuracy/F1 (~0.13) while AUC stays high (~0.88) — the features rank
+    # correctly but the argmax predictions are spread across minority classes.
+    # The same recipe is harmless on balanced (CIFAR/MNIST) or binary
+    # (Breast/Pneumonia) sets. So for DermaMNIST we disable CutMix/MixUp and
+    # rely on the inverse-frequency class weighting that medical datasets
+    # already receive below. See CONTRIBUTION.md / results_summary.csv analysis.
+    if args.dataset.lower() == "dermamnist":
+        if args.cutmix_alpha > 0.0 or args.mixup_alpha > 0.0:
+            print(f"[derma-fix] Disabling label-blending augmentation for "
+                  f"DermaMNIST (was cutmix={args.cutmix_alpha}, "
+                  f"mixup={args.mixup_alpha}) — caused prior collapse.")
+            args.cutmix_alpha = 0.0
+            args.mixup_alpha = 0.0
+
     if args.device:
         device = torch.device(args.device)
     else:
