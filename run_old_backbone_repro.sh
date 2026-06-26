@@ -24,23 +24,23 @@ mkdir -p "$LOGS"
 # Original conditions (28px, cosine, no augmentation). Legacy backbone = default.
 COMMON_ARGS="--dataset cifar10 --n_epochs 200 --n_runs 1 --scale micro --img_size 28 --scheduler cosine --output_dir $OUT --resume"
 
-# GPU 0: classical baseline + quantum without attention encoding
-(
-    echo "[GPU 0] Micro Classical Baseline (no_quantum)..."
-    $PY run_experiment.py $COMMON_ARGS --n_quantum_heads 1 --ablation no_quantum --device cuda:0 > "$LOGS/log_cifar10_micro_classical.txt" 2>&1
+# # GPU 0: classical baseline + quantum without attention encoding
+# (
+#     echo "[GPU 0] Micro Classical Baseline (no_quantum)..."
+#     $PY run_experiment.py $COMMON_ARGS --n_quantum_heads 1 --ablation no_quantum --device cuda:0 > "$LOGS/log_cifar10_micro_classical.txt" 2>&1
 
-    echo "[GPU 0] Micro Quantum (k=4, NO attenc)..."
-    $PY run_experiment.py $COMMON_ARGS --n_quantum_heads 4 --contrastive --device cuda:0 > "$LOGS/log_cifar10_micro_k4_no_attenc.txt" 2>&1
+#     echo "[GPU 0] Micro Quantum (k=4, NO attenc)..."
+#     $PY run_experiment.py $COMMON_ARGS --n_quantum_heads 4 --contrastive --device cuda:0 > "$LOGS/log_cifar10_micro_k4_no_attenc.txt" 2>&1
 
-    echo "[GPU 0] Jobs Finished."
-) &
+#     echo "[GPU 0] Jobs Finished."
+# ) &
 
 # GPU 1: the winning config — quantum with attention encoding
 (
-    echo "[GPU 1] Micro Quantum (k=4, WITH attenc) -- the winner..."
-    $PY run_experiment.py $COMMON_ARGS --n_quantum_heads 4 --attention_encoding --contrastive --device cuda:1 > "$LOGS/log_cifar10_micro_k4_attenc.txt" 2>&1
+    echo "[GPU 0] Micro Quantum (k=4, WITH attenc) -- the winner..."
+    $PY run_experiment.py $COMMON_ARGS --n_quantum_heads 4 --attention_encoding --contrastive --device cuda:0 > "$LOGS/log_cifar10_micro_k4_attenc.txt" 2>&1
 
-    echo "[GPU 1] Jobs Finished."
+    echo "[GPU 0] Jobs Finished."
 ) &
 
 wait
