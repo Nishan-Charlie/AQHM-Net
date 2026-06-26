@@ -1,0 +1,5 @@
+domain,dataset,config,K,attention_encoding,scale,scheduler,resolution,epochs,n_runs,degenerate,weighted_accuracy_mean,weighted_accuracy_std,weighted_f1_mean,weighted_f1_std,macro_f1_mean,macro_f1_std,mean_auc_mean,mean_auc_std,kept_source,n_duplicates,collapsed_groups
+Natural,cifar100,K4,4,False,small,cosine,28,50,1,False,0.5204,,0.5084963425862143,,0.5084963425862143,,0.9678643535353536,,results_old_backbone/cifar100_k4/summary.json,0,
+Natural,cifar100,no-quantum,1,False,small,cosine,28,50,1,False,0.5099,,0.498440165723287,,0.4984401657232872,,0.9689320909090908,,results_old_backbone/cifar100_no_quantum/summary.json,0,
+Natural,cifar100,K4+AE,4,True,small,cosine,28,50,1,False,0.505,,0.4956312447979063,,0.4956312447979063,,0.9668043030303032,,results_old_backbone/cifar100_k4_attenc/summary.json,0,
+Natural,cifar100,"K4+AE, micro, onecycle, cutmix1.0+mixup0.8",4,True,micro,onecycle,28,50,1,False,0.4329,,0.4038600518858747,,0.4038600518858746,,0.9624970606060606,,results_combinations/cifar100_k4_attenc_micro_onecycle_cutmix1.0_mixup0.8_ra2_9/summary.json,0,
